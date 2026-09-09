@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
-import { Wallet, CreditCard, HandCoins, Settings } from "lucide-react";
+import { Wallet, PieChart, CreditCard, HandCoins, Settings } from "lucide-react";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
@@ -40,6 +40,7 @@ export const viewport: Viewport = {
 
 const navLinks = [
   { href: "/", label: "Dashboard", Icon: Wallet },
+  { href: "/resumen", label: "Resumen", Icon: PieChart },
   { href: "/tarjetas", label: "Tarjetas", Icon: CreditCard },
   { href: "/prestamos", label: "Préstamos", Icon: HandCoins },
   { href: "/configuracion", label: "Configuración", Icon: Settings },

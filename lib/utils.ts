@@ -16,6 +16,22 @@ export function formatMoneda(monto: number, moneda: Moneda) {
   }).format(monto ?? 0);
 }
 
+/** Como formatMoneda pero sin decimales, para montos grandes en tableros. */
+export function formatMonedaCompact(monto: number, moneda: Moneda) {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: moneda,
+    maximumFractionDigits: 0,
+  }).format(monto ?? 0);
+}
+
+/** "+12,3%" / "−4,0%" con signo explícito. */
+export function formatPct(valor: number, decimals = 1) {
+  const n = Number.isFinite(valor) ? valor : 0;
+  const signo = n > 0 ? "+" : n < 0 ? "−" : "";
+  return `${signo}${Math.abs(n).toFixed(decimals)}%`;
+}
+
 export function formatFecha(fecha: string | Date) {
   const d = typeof fecha === "string" ? new Date(fecha) : fecha;
   if (Number.isNaN(d.getTime())) return "—";

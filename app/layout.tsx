@@ -1,7 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import Link from "next/link";
-import { Wallet, PieChart, CreditCard, HandCoins, Settings } from "lucide-react";
+import {
+  Wallet,
+  PieChart,
+  History,
+  CreditCard,
+  HandCoins,
+  Settings,
+} from "lucide-react";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
@@ -13,6 +20,18 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -41,6 +60,7 @@ export const viewport: Viewport = {
 const navLinks = [
   { href: "/", label: "Dashboard", Icon: Wallet },
   { href: "/resumen", label: "Resumen", Icon: PieChart },
+  { href: "/historico", label: "Histórico", Icon: History },
   { href: "/tarjetas", label: "Tarjetas", Icon: CreditCard },
   { href: "/prestamos", label: "Préstamos", Icon: HandCoins },
   { href: "/configuracion", label: "Configuración", Icon: Settings },
@@ -54,7 +74,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100">
         <header className="border-b border-zinc-800 bg-slate-950/80 backdrop-blur sticky top-0 z-10">

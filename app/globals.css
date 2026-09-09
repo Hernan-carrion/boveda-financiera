@@ -10,6 +10,10 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-space-grotesk), var(--font-geist-sans), ui-sans-serif,
+    system-ui, sans-serif;
+  --font-tech: var(--font-jetbrains-mono), var(--font-geist-mono), ui-monospace,
+    "SFMono-Regular", monospace;
 }
 
 body {
@@ -19,4 +23,16 @@ body {
 
 ::selection {
   background: #334155;
+}
+
+/* Utilidades tipográficas para la vista de Resúmenes mensuales */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.font-tech {
+  font-family: var(--font-tech);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }

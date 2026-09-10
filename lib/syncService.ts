@@ -74,10 +74,22 @@ export async function pushToCloud(): Promise<SyncResult> {
     return {
       ok: false,
       message: "Error al subir a la nube.",
-      detail: err instanceof Error ? err.message : String(err),
+      detail: pistaError(err),
       porTabla,
     };
   }
+}
+
+/** Traduce errores frecuentes a algo accionable. */
+function pistaError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  if (/row-level security/i.test(msg)) {
+    return `${msg} — Falta correr el bloque de políticas RLS de supabase_sync_schema.sql en el SQL Editor de Supabase.`;
+  }
+  if (/Invalid path specified/i.test(msg)) {
+    return `${msg} — NEXT_PUBLIC_SUPABASE_URL debe ser la Project URL (https://xxx.supabase.co), sin /rest/v1.`;
+  }
+  return msg;
 }
 
 /**
@@ -109,7 +121,7 @@ export async function pullFromCloud(): Promise<SyncResult> {
     return {
       ok: false,
       message: "Error al descargar de la nube.",
-      detail: err instanceof Error ? err.message : String(err),
+      detail: pistaError(err),
       porTabla,
     };
   }

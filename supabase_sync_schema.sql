@@ -83,28 +83,28 @@ create table if not exists public.prestamos (
 );
 
 -- ============================================================================
---  SEGURIDAD (RLS)
+--  SEGURIDAD (RLS) — REQUERIDO para que el sync pueda escribir
 -- ----------------------------------------------------------------------------
---  Por defecto las tablas nuevas NO tienen Row Level Security, así que la
---  `anon key` ya puede leer/escribir y el sync funciona sin más.
+--  ⚠️  Estas políticas permiten leer y ESCRIBIR con la `anon key`. Cualquiera
+--  que tenga la URL del proyecto puede modificar estas tablas. Es aceptable
+--  para uso personal (sincronizar tu compu y tu celu). Para multiusuario real,
+--  agregá Supabase Auth + una columna `user_id` y filtrá por `auth.uid()`.
 --
---  ⚠️  Con la anon key, cualquiera que tenga la URL del proyecto puede leer y
---  escribir estas tablas. Es aceptable para uso personal / proyecto descartable.
---  Para algo más serio, agregá Auth de Supabase y una columna user_id.
---
---  Si el panel te obliga a activar RLS, descomentá este bloque para permitir
---  todo con la anon key:
+--  Este bloque es idempotente: podés correrlo las veces que quieras.
 -- ----------------------------------------------------------------------------
--- do $$
--- declare t text;
--- begin
---   foreach t in array array['cuentas','transacciones','tarjetas',
---                            'deudas_tarjetas','inversiones','prestamos']
---   loop
---     execute format('alter table public.%I enable row level security;', t);
---     execute format($p$
---       create policy "boveda_anon_all" on public.%I
---       for all to anon using (true) with check (true);
---     $p$, t);
---   end loop;
--- end $$;
+do $$
+declare
+  t text;
+  roles constant text := 'anon, authenticated';
+begin
+  foreach t in array array['cuentas','transacciones','tarjetas',
+                           'deudas_tarjetas','inversiones','prestamos']
+  loop
+    execute format('alter table public.%I enable row level security;', t);
+    execute format('drop policy if exists "boveda_rw" on public.%I;', t);
+    execute format(
+      'create policy "boveda_rw" on public.%I for all to %s using (true) with check (true);',
+      t, roles
+    );
+  end loop;
+end $$;

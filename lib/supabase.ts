@@ -8,8 +8,21 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * Como el export es estático, las env vars se inyectan en tiempo de build.
  */
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+/**
+ * Acepta que peguen la "Project URL" o la "REST URL": normaliza
+ * `https://xxx.supabase.co/rest/v1/` → `https://xxx.supabase.co`.
+ */
+function normalizarUrl(u?: string): string | undefined {
+  if (!u) return undefined;
+  return u
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/rest\/v1$/, "")
+    .replace(/\/+$/, "");
+}
+
+const url = normalizarUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
 export const supabaseEnabled = Boolean(url && anonKey);
 

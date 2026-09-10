@@ -26,9 +26,15 @@ function fechaEnMes(fechaISO: string, ref: Date): boolean {
   return isWithinInterval(d, { start: startOfMonth(ref), end: endOfMonth(ref) });
 }
 
+/**
+ * Ingresos "reales": se excluye la categoría "Reintegros" porque es sólo el
+ * asiento compensatorio de un gasto reintegrable (no es plata nueva).
+ */
 const ES_INGRESO = (t: Transaccion) =>
-  t.tipo === "ingreso" || t.tipo === "devolucion";
-const ES_EGRESO = (t: Transaccion) => t.tipo === "egreso";
+  (t.tipo === "ingreso" || t.tipo === "devolucion") &&
+  t.categoria !== "Reintegros";
+/** Egresos netos: los gastos reintegrables no computan como gasto propio. */
+const ES_EGRESO = (t: Transaccion) => t.tipo === "egreso" && !t.reintegrable;
 
 /**
  * Total de ingresos y egresos de las transacciones del mes actual.

@@ -67,6 +67,18 @@ export default function QuickInput() {
             <Dato label="Tipo" valor={preview.tipo} />
             <Dato label="Categoría" valor={preview.categoria} />
           </div>
+          {preview.tipo === "egreso" && (
+            <label className="mt-3 flex items-center gap-2 text-xs text-zinc-300">
+              <input
+                type="checkbox"
+                checked={preview.reintegrable}
+                onChange={(e) =>
+                  setPreview({ ...preview, reintegrable: e.target.checked })
+                }
+              />
+              Reintegrable (me lo van a devolver) → aparece en “Por cobrar”
+            </label>
+          )}
           <div className="mt-3 flex gap-2">
             <button onClick={confirmar} disabled={guardando} className={btnCls}>
               <Check size={16} />

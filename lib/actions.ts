@@ -47,8 +47,47 @@ export async function registrarTransaccion(res: ResultadoGasto) {
       categoria: res.categoria,
       descripcion: res.descripcion,
       fecha: new Date().toISOString(),
+      ...(res.reintegrable
+        ? { reintegrable: true as const, reintegrado: false as const }
+        : {}),
     });
   });
+}
+
+/**
+ * Marca un gasto reintegrable como ya cobrado: genera el ingreso compensatorio
+ * (categoría "Reintegros") en la misma cuenta y moneda, y suma el monto al saldo.
+ */
+export async function marcarReintegrado(id: number) {
+  return bovedaDB.transaction(
+    "rw",
+    bovedaDB.transacciones,
+    bovedaDB.cuentas,
+    async () => {
+      const tx = await bovedaDB.transacciones.get(id);
+      if (!tx || tx.id == null) throw new Error("Movimiento inexistente.");
+      if (!tx.reintegrable || tx.reintegrado) return;
+
+      const cuenta = await bovedaDB.cuentas.get(tx.cuenta_id);
+      if (cuenta && cuenta.id != null) {
+        await bovedaDB.cuentas.update(cuenta.id, {
+          saldo: cuenta.saldo + Math.abs(tx.monto),
+        });
+      }
+
+      await bovedaDB.transacciones.add({
+        cuenta_id: tx.cuenta_id,
+        tipo: "ingreso",
+        monto: Math.abs(tx.monto),
+        moneda: tx.moneda,
+        categoria: "Reintegros",
+        descripcion: `Reintegro: ${tx.descripcion || "gasto"}`,
+        fecha: new Date().toISOString(),
+      });
+
+      await bovedaDB.transacciones.update(tx.id, { reintegrado: true });
+    },
+  );
 }
 
 export async function actualizarCategoria(id: number, categoria: string) {
@@ -67,6 +106,111 @@ export async function borrarTransaccion(id: number) {
     }
     await bovedaDB.transacciones.delete(id);
   });
+}
+
+/* -------------------------- Suscripciones -------------------------- */
+
+/**
+ * Recorre las suscripciones activas y, si ya pasó el `dia_cobro` del mes en
+ * curso y todavía no se generó el cobro de este período, inserta la
+ * transacción de egreso y descuenta el saldo de la cuenta.
+ * Devuelve las descripciones cobradas para poder notificar con `sonner`.
+ */
+export async function procesarSuscripcionesVencidas(
+  hoy: Date = new Date(),
+): Promise<string[]> {
+  const periodo = periodoActual(hoy);
+  const diaHoy = hoy.getDate();
+  const cobradas: string[] = [];
+
+  const activas = await bovedaDB.suscripciones
+    .filter((s) => s.activa === true)
+    .toArray();
+
+  for (const sus of activas) {
+    if (sus.id == null) continue;
+    if (sus.ultimo_cobro_periodo === periodo) continue;
+    if (diaHoy < sus.dia_cobro) continue;
+
+    await bovedaDB.transaction(
+      "rw",
+      bovedaDB.suscripciones,
+      bovedaDB.cuentas,
+      bovedaDB.transacciones,
+      async () => {
+        const cuenta = await bovedaDB.cuentas.get(sus.cuenta_id);
+        if (cuenta && cuenta.id != null) {
+          await bovedaDB.cuentas.update(cuenta.id, {
+            saldo: cuenta.saldo - Math.abs(sus.monto),
+          });
+        }
+        await bovedaDB.transacciones.add({
+          cuenta_id: sus.cuenta_id,
+          tipo: "egreso",
+          monto: Math.abs(sus.monto),
+          moneda: sus.moneda,
+          categoria: sus.categoria || "Suscripciones",
+          descripcion: `Suscripción: ${sus.descripcion}`,
+          fecha: hoy.toISOString(),
+        });
+        await bovedaDB.suscripciones.update(sus.id!, {
+          ultimo_cobro_periodo: periodo,
+          last_updated: new Date().toISOString(),
+        });
+      },
+    );
+    cobradas.push(sus.descripcion);
+  }
+
+  return cobradas;
+}
+
+/* -------------------------- Exportación CSV -------------------------- */
+
+/** Escapa un valor para CSV (comillas dobles + separador coma). */
+function csvCell(v: unknown): string {
+  const s = v == null ? "" : String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** Convierte toda la tabla `transacciones` de Dexie a texto CSV. */
+export async function transaccionesToCSV(): Promise<string> {
+  const filas = await bovedaDB.transacciones.orderBy("fecha").toArray();
+  const cuentas = await bovedaDB.cuentas.toArray();
+  const nombreCuenta = (id: number) =>
+    cuentas.find((c) => c.id === id)?.nombre ?? String(id);
+
+  const cabecera = [
+    "id",
+    "fecha",
+    "tipo",
+    "categoria",
+    "descripcion",
+    "monto",
+    "moneda",
+    "cuenta",
+    "reintegrable",
+    "reintegrado",
+  ];
+
+  const lineas = filas.map((t) =>
+    [
+      t.id,
+      t.fecha,
+      t.tipo,
+      t.categoria,
+      t.descripcion,
+      t.monto,
+      t.moneda,
+      nombreCuenta(t.cuenta_id),
+      t.reintegrable ? "sí" : "no",
+      t.reintegrado ? "sí" : "no",
+    ]
+      .map(csvCell)
+      .join(","),
+  );
+
+  return [cabecera.join(","), ...lineas].join("\n");
 }
 
 /* -------------------------- Tarjetas -------------------------- */
@@ -290,25 +434,54 @@ export interface BackupBoveda {
     deudas_tarjetas: unknown[];
     inversiones: unknown[];
     prestamos: unknown[];
+    presupuestos?: unknown[];
+    suscripciones?: unknown[];
+    metas_ahorro?: unknown[];
+    configuracion?: unknown[];
   };
 }
 
 export async function exportarJSON(): Promise<BackupBoveda> {
-  const [cuentas, transacciones, tarjetas, deudas_tarjetas, inversiones, prestamos] =
-    await Promise.all([
-      bovedaDB.cuentas.toArray(),
-      bovedaDB.transacciones.toArray(),
-      bovedaDB.tarjetas.toArray(),
-      bovedaDB.deudas_tarjetas.toArray(),
-      bovedaDB.inversiones.toArray(),
-      bovedaDB.prestamos.toArray(),
-    ]);
+  const [
+    cuentas,
+    transacciones,
+    tarjetas,
+    deudas_tarjetas,
+    inversiones,
+    prestamos,
+    presupuestos,
+    suscripciones,
+    metas_ahorro,
+    configuracion,
+  ] = await Promise.all([
+    bovedaDB.cuentas.toArray(),
+    bovedaDB.transacciones.toArray(),
+    bovedaDB.tarjetas.toArray(),
+    bovedaDB.deudas_tarjetas.toArray(),
+    bovedaDB.inversiones.toArray(),
+    bovedaDB.prestamos.toArray(),
+    bovedaDB.presupuestos.toArray(),
+    bovedaDB.suscripciones.toArray(),
+    bovedaDB.metas_ahorro.toArray(),
+    bovedaDB.configuracion.toArray(),
+  ]);
 
   return {
     __app: "boveda-financiera",
-    version: 2,
+    version: 4,
     exportadoEn: new Date().toISOString(),
-    data: { cuentas, transacciones, tarjetas, deudas_tarjetas, inversiones, prestamos },
+    data: {
+      cuentas,
+      transacciones,
+      tarjetas,
+      deudas_tarjetas,
+      inversiones,
+      prestamos,
+      presupuestos,
+      suscripciones,
+      metas_ahorro,
+      configuracion,
+    },
   };
 }
 
@@ -326,6 +499,10 @@ export async function importarJSON(backup: BackupBoveda) {
       bovedaDB.deudas_tarjetas,
       bovedaDB.inversiones,
       bovedaDB.prestamos,
+      bovedaDB.presupuestos,
+      bovedaDB.suscripciones,
+      bovedaDB.metas_ahorro,
+      bovedaDB.configuracion,
     ],
     async () => {
       await Promise.all([
@@ -335,6 +512,10 @@ export async function importarJSON(backup: BackupBoveda) {
         bovedaDB.deudas_tarjetas.clear(),
         bovedaDB.inversiones.clear(),
         bovedaDB.prestamos.clear(),
+        bovedaDB.presupuestos.clear(),
+        bovedaDB.suscripciones.clear(),
+        bovedaDB.metas_ahorro.clear(),
+        bovedaDB.configuracion.clear(),
       ]);
       await Promise.all([
         bovedaDB.cuentas.bulkAdd(data.cuentas as never),
@@ -343,6 +524,10 @@ export async function importarJSON(backup: BackupBoveda) {
         bovedaDB.deudas_tarjetas.bulkAdd(data.deudas_tarjetas as never),
         bovedaDB.inversiones.bulkAdd(data.inversiones as never),
         bovedaDB.prestamos.bulkAdd(data.prestamos as never),
+        bovedaDB.presupuestos.bulkAdd((data.presupuestos ?? []) as never),
+        bovedaDB.suscripciones.bulkAdd((data.suscripciones ?? []) as never),
+        bovedaDB.metas_ahorro.bulkAdd((data.metas_ahorro ?? []) as never),
+        bovedaDB.configuracion.bulkAdd((data.configuracion ?? []) as never),
       ]);
     },
   );

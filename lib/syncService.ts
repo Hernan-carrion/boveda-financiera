@@ -17,6 +17,10 @@ const TABLAS = [
   "deudas_tarjetas",
   "inversiones",
   "prestamos",
+  "presupuestos",
+  "suscripciones",
+  "metas_ahorro",
+  "configuracion",
 ] as const;
 
 export type TablaSync = (typeof TABLAS)[number];
@@ -126,3 +130,126 @@ export async function pullFromCloud(): Promise<SyncResult> {
     };
   }
 }
+
+/* ============================================================================
+ *  Sync resiliente: auto-pull al iniciar, cola offline y realtime (WebSocket)
+ * ========================================================================== */
+
+const COLA_KEY = "boveda_sync_pendiente";
+
+function hayPushPendiente(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(COLA_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function marcarPushPendiente(pendiente: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (pendiente) window.localStorage.setItem(COLA_KEY, "1");
+    else window.localStorage.removeItem(COLA_KEY);
+  } catch {
+    /* almacenamiento no disponible */
+  }
+}
+
+/**
+ * Push con cola offline: si falla por falta de red deja una marca en
+ * localStorage y reintenta solo cuando vuelve la conexión (`online`).
+ */
+export async function pushConCola(): Promise<SyncResult> {
+  if (!supabase) return SIN_CONFIG;
+
+  const r = await pushToCloud();
+  if (r.ok) {
+    marcarPushPendiente(false);
+    return r;
+  }
+
+  const offline =
+    typeof navigator !== "undefined" && navigator.onLine === false;
+  const errorDeRed = /fetch|network|Failed to fetch|load failed/i.test(
+    r.detail ?? r.message,
+  );
+
+  if (offline || errorDeRed) {
+    marcarPushPendiente(true);
+    return {
+      ...r,
+      message:
+        "Sin conexión: los cambios quedaron en cola y se subirán al volver la red.",
+    };
+  }
+  return r;
+}
+
+let autoSyncIniciado = false;
+let canalRealtime: ReturnType<NonNullable<typeof supabase>["channel"]> | null =
+  null;
+
+/**
+ * Arranca la sincronización automática:
+ *  1. Pull inicial desde la nube.
+ *  2. Reintento de la cola offline pendiente.
+ *  3. Listener `online` para vaciar la cola cuando vuelve la red.
+ *  4. Suscripción realtime (WebSocket) a cambios remotos → pull + callback.
+ *
+ * Es idempotente: llamarla varias veces no duplica listeners.
+ */
+export function startAutoSync(onRemoteChange?: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  if (!supabase) return () => {};
+  if (autoSyncIniciado) return () => {};
+  autoSyncIniciado = true;
+
+  const cliente = supabase;
+
+  // 1 + 2: pull inicial y drenaje de cola
+  void pullFromCloud().then((r) => {
+    if (r.ok) onRemoteChange?.();
+  });
+  if (hayPushPendiente()) void pushConCola();
+
+  // 3: al recuperar conexión, subir lo pendiente
+  const alVolverOnline = () => {
+    if (hayPushPendiente()) void pushConCola();
+  };
+  window.addEventListener("online", alVolverOnline);
+
+  // 4: realtime — cualquier cambio remoto dispara un pull
+  let pullPendiente: ReturnType<typeof setTimeout> | null = null;
+  const programarPull = () => {
+    if (pullPendiente) clearTimeout(pullPendiente);
+    pullPendiente = setTimeout(() => {
+      void pullFromCloud().then((r) => {
+        if (r.ok) onRemoteChange?.();
+      });
+    }, 400);
+  };
+
+  canalRealtime = cliente.channel("boveda-sync");
+  for (const tabla of TABLAS) {
+    canalRealtime.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: tabla },
+      programarPull,
+    );
+  }
+  canalRealtime.subscribe();
+
+  // Cleanup
+  return () => {
+    window.removeEventListener("online", alVolverOnline);
+    if (pullPendiente) clearTimeout(pullPendiente);
+    if (canalRealtime) {
+      void cliente.removeChannel(canalRealtime);
+      canalRealtime = null;
+    }
+    autoSyncIniciado = false;
+  };
+}
+
+export { hayPushPendiente };

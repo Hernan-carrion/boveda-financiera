@@ -2,14 +2,23 @@ import Dexie, { type EntityTable } from "dexie";
 
 /**
  * Base de datos local (IndexedDB) de Bóveda Financiera.
- * Ninguna de estas tablas viaja a un servidor: la app es 100% Local-First.
+ * La app es Local-First; la sincronización con Supabase es opcional.
+ *
+ * `last_updated` (ISO) está en todas las tablas para resolver conflictos de
+ * sincronización a futuro (eventual consistency). El `id` autoincremental local
+ * se usa como clave primaria también en Supabase (modelo de un solo usuario).
  */
 
 export type Moneda = "ARS" | "USD";
 
+/** Campo común de sincronización presente en todas las tablas. */
+export interface Sincronizable {
+  last_updated?: string; // ISO string
+}
+
 export type TipoCuenta = "efectivo" | "digital" | "banco";
 
-export interface Cuenta {
+export interface Cuenta extends Sincronizable {
   id?: number;
   nombre: string;
   tipo: TipoCuenta;
@@ -23,7 +32,7 @@ export type TipoTransaccion =
   | "prestamo"
   | "devolucion";
 
-export interface Transaccion {
+export interface Transaccion extends Sincronizable {
   id?: number;
   cuenta_id: number;
   tipo: TipoTransaccion;
@@ -34,7 +43,7 @@ export interface Transaccion {
   fecha: string; // ISO string
 }
 
-export interface Tarjeta {
+export interface Tarjeta extends Sincronizable {
   id?: number;
   nombre: string;
   dia_cierre: number;
@@ -45,7 +54,7 @@ export interface Tarjeta {
 
 export type EstadoDeuda = "pendiente" | "parcial" | "pagada";
 
-export interface DeudaTarjeta {
+export interface DeudaTarjeta extends Sincronizable {
   id?: number;
   tarjeta_id: number;
   periodo: string; // ej: "2026-09"
@@ -56,7 +65,7 @@ export interface DeudaTarjeta {
 
 export type EstadoInversion = "activa" | "cerrada";
 
-export interface Inversion {
+export interface Inversion extends Sincronizable {
   id?: number;
   nombre: string;
   tipo: string;
@@ -73,7 +82,7 @@ export interface Inversion {
 export type TipoPrestamo = "otorgado" | "recibido";
 export type EstadoPrestamo = "abierto" | "devuelto";
 
-export interface Prestamo {
+export interface Prestamo extends Sincronizable {
   id?: number;
   persona: string;
   tipo: TipoPrestamo;
@@ -128,6 +137,25 @@ bovedaDB
         if (p.estado === "saldado") p.estado = "devuelto";
       }),
   );
+
+/**
+ * v3 — preparación para sincronización con Supabase.
+ * Se indexa `last_updated` en todas las tablas para poder resolver conflictos
+ * por fecha en el futuro (eventual consistency).
+ */
+bovedaDB.version(3).stores({
+  cuentas: "++id, nombre, tipo, moneda, saldo, last_updated",
+  transacciones:
+    "++id, cuenta_id, tipo, monto, moneda, categoria, descripcion, fecha, last_updated",
+  tarjetas:
+    "++id, nombre, dia_cierre, dia_vencimiento, limite, moneda, last_updated",
+  deudas_tarjetas:
+    "++id, tarjeta_id, periodo, monto_total, monto_pagado, estado, last_updated",
+  inversiones:
+    "++id, nombre, tipo, capital_inicial, moneda, estado, last_updated",
+  prestamos:
+    "++id, persona, tipo, monto, moneda, estado, fecha_prestamo, last_updated",
+});
 
 /**
  * Cuentas base que se crean la primera vez que se abre la app.

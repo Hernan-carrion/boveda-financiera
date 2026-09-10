@@ -2,9 +2,18 @@
 
 import { useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Download, Upload, Plus, RefreshCw } from "lucide-react";
+import {
+  Download,
+  Upload,
+  Plus,
+  RefreshCw,
+  Cloud,
+  Loader2,
+} from "lucide-react";
 import { bovedaDB, type Moneda, type TipoCuenta } from "@/lib/db";
 import { exportarJSON, importarJSON, type BackupBoveda } from "@/lib/actions";
+import { pushToCloud, pullFromCloud } from "@/lib/syncService";
+import { supabaseEnabled } from "@/lib/supabase";
 import { formatMoneda } from "@/lib/utils";
 import {
   Card,
@@ -96,6 +105,8 @@ export default function ConfiguracionPage() {
         </Card>
       </section>
 
+      <CloudSyncSection />
+
       <section>
         <SectionTitle>Cuentas</SectionTitle>
         <div className="flex flex-col gap-3">
@@ -113,6 +124,84 @@ export default function ConfiguracionPage() {
         <NuevaCuentaForm />
       </section>
     </div>
+  );
+}
+
+function CloudSyncSection() {
+  const [busy, setBusy] = useState<null | "push" | "pull">(null);
+  const [res, setRes] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function run(kind: "push" | "pull") {
+    setBusy(kind);
+    setRes(null);
+    const r = kind === "push" ? await pushToCloud() : await pullFromCloud();
+    setRes({
+      ok: r.ok,
+      text: r.detail ? `${r.message} — ${r.detail}` : r.message,
+    });
+    setBusy(null);
+    if (r.ok && kind === "pull") {
+      setTimeout(() => window.location.reload(), 1000);
+    }
+  }
+
+  return (
+    <section>
+      <SectionTitle>Sincronización en la Nube (Supabase)</SectionTitle>
+      <Card className="flex flex-col gap-3">
+        {!supabaseEnabled && (
+          <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-300">
+            Supabase no está configurado. Agregá{" "}
+            <code>NEXT_PUBLIC_SUPABASE_URL</code> y{" "}
+            <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> en <code>.env.local</code>{" "}
+            y volvé a compilar.
+          </p>
+        )}
+        <p className="text-sm text-zinc-400">
+          Subí la base local a la nube o traé la versión de la nube a este
+          dispositivo. Usa <strong>upsert por id</strong>, así podés mantener la
+          compu y el celu sincronizados.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => run("push")}
+            disabled={!supabaseEnabled || busy !== null}
+            className={btnCls}
+          >
+            {busy === "push" ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Cloud size={16} />
+            )}
+            Subir a la Nube (Push)
+          </button>
+          <button
+            type="button"
+            onClick={() => run("pull")}
+            disabled={!supabaseEnabled || busy !== null}
+            className={btnGhostCls}
+          >
+            {busy === "pull" ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Cloud size={16} />
+            )}
+            Descargar de la Nube (Pull)
+          </button>
+        </div>
+        {res && (
+          <p
+            className={
+              res.ok ? "text-xs text-emerald-400" : "text-xs text-red-400"
+            }
+          >
+            {res.ok ? "✓ " : "✕ "}
+            {res.text}
+          </p>
+        )}
+      </Card>
+    </section>
   );
 }
 

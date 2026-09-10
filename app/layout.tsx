@@ -41,22 +41,40 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+/**
+ * En GitHub Pages de proyecto el sitio vive bajo /boveda-financiera. Next
+ * prefija `basePath` en assets y <Link>, pero NO en `metadata.manifest` ni en
+ * los <link rel="icon">, así que acá lo anteponemos a mano. En local
+ * (sin la env) queda "" y todo resuelve contra la raíz.
+ */
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 export const metadata: Metadata = {
   title: "🏦 Bóveda Financiera",
   description:
     "Gestión de finanzas personales 100% local: cuentas, tarjetas y préstamos, multimoneda y offline.",
-  manifest: "/manifest.json",
+  manifest: `${BASE}/manifest.json`,
   applicationName: "Bóveda",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Bóveda",
   },
-  // Los íconos los generan `app/icon.tsx` y `app/apple-icon.tsx` en build-time.
+  icons: {
+    icon: [
+      { url: `${BASE}/icon-192.png`, sizes: "192x192", type: "image/png" },
+      { url: `${BASE}/icon-512.png`, sizes: "512x512", type: "image/png" },
+    ],
+    apple: {
+      url: `${BASE}/apple-touch-icon.png`,
+      sizes: "180x180",
+      type: "image/png",
+    },
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f172a",
+  themeColor: "#09090b",
   width: "device-width",
   initialScale: 1,
 };

@@ -11,9 +11,12 @@ export default function ServiceWorkerRegister() {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
 
+    // En GitHub Pages de proyecto el SW vive bajo /boveda-financiera.
+    const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
     const register = () => {
       navigator.serviceWorker
-        .register("/sw.js")
+        .register(`${base}/sw.js`, { scope: `${base}/` })
         .catch((err) => console.warn("SW no registrado:", err));
     };
 

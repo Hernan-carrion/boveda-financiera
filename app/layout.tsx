@@ -9,9 +9,15 @@ import {
   HandCoins,
   Coins,
   Settings,
+  Target,
+  Repeat,
+  PiggyBank,
+  BarChart3,
+  Receipt,
 } from "lucide-react";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import AppInit from "@/components/AppInit";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -60,6 +66,11 @@ export const viewport: Viewport = {
 
 const navLinks = [
   { href: "/", label: "Dashboard", Icon: Wallet },
+  { href: "/presupuestos", label: "Presupuestos", Icon: Target },
+  { href: "/metas", label: "Metas", Icon: PiggyBank },
+  { href: "/suscripciones", label: "Suscripciones", Icon: Repeat },
+  { href: "/por-cobrar", label: "Por cobrar", Icon: Receipt },
+  { href: "/estadisticas", label: "Estadísticas", Icon: BarChart3 },
   { href: "/resumen", label: "Resumen", Icon: PieChart },
   { href: "/historico", label: "Histórico", Icon: History },
   { href: "/tarjetas", label: "Tarjetas", Icon: CreditCard },
@@ -110,6 +121,7 @@ export default function RootLayout({
           Bóveda Financiera · datos guardados sólo en este dispositivo (IndexedDB)
         </footer>
         <ServiceWorkerRegister />
+        <AppInit />
       </body>
     </html>
   );

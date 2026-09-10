@@ -47,8 +47,9 @@ function signo(tipo: Transaccion["tipo"]): number {
 }
 
 const esIngreso = (t: Transaccion) =>
-  t.tipo === "ingreso" || t.tipo === "devolucion";
-const esEgreso = (t: Transaccion) => t.tipo === "egreso";
+  (t.tipo === "ingreso" || t.tipo === "devolucion") &&
+  t.categoria !== "Reintegros";
+const esEgreso = (t: Transaccion) => t.tipo === "egreso" && !t.reintegrable;
 
 function ts(fechaISO: string): number {
   const n = new Date(fechaISO).getTime();

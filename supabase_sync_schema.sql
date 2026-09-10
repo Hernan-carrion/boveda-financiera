@@ -32,8 +32,14 @@ create table if not exists public.transacciones (
   categoria    text,
   descripcion  text,
   fecha        text,
+  reintegrable boolean default false,
+  reintegrado  boolean default false,
   last_updated text
 );
+
+-- Alta de columnas nuevas si la tabla ya existía de una versión anterior.
+alter table public.transacciones add column if not exists reintegrable boolean default false;
+alter table public.transacciones add column if not exists reintegrado  boolean default false;
 
 create table if not exists public.tarjetas (
   id              bigint primary key,
@@ -82,6 +88,46 @@ create table if not exists public.prestamos (
   last_updated      text
 );
 
+-- ----- Módulos PRO -----
+
+create table if not exists public.presupuestos (
+  id           bigint primary key,
+  categoria    text,
+  monto_limite double precision default 0,
+  moneda       text,
+  mes          text,
+  last_updated text
+);
+
+create table if not exists public.suscripciones (
+  id                    bigint primary key,
+  descripcion           text,
+  monto                 double precision default 0,
+  moneda                text,
+  categoria             text,
+  cuenta_id             bigint,
+  dia_cobro             integer,
+  activa                boolean default true,
+  ultimo_cobro_periodo  text,
+  last_updated          text
+);
+
+create table if not exists public.metas_ahorro (
+  id             bigint primary key,
+  nombre         text,
+  monto_objetivo double precision default 0,
+  moneda         text,
+  color_hex      text,
+  last_updated   text
+);
+
+create table if not exists public.configuracion (
+  id           bigint primary key,
+  clave        text unique,
+  valor        text,
+  last_updated text
+);
+
 -- ============================================================================
 --  SEGURIDAD (RLS) — REQUERIDO para que el sync pueda escribir
 -- ----------------------------------------------------------------------------
@@ -98,7 +144,9 @@ declare
   roles constant text := 'anon, authenticated';
 begin
   foreach t in array array['cuentas','transacciones','tarjetas',
-                           'deudas_tarjetas','inversiones','prestamos']
+                           'deudas_tarjetas','inversiones','prestamos',
+                           'presupuestos','suscripciones','metas_ahorro',
+                           'configuracion']
   loop
     execute format('alter table public.%I enable row level security;', t);
     execute format('drop policy if exists "boveda_rw" on public.%I;', t);

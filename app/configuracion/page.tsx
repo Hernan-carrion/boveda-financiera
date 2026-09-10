@@ -14,6 +14,7 @@ import { bovedaDB, type Moneda, type TipoCuenta } from "@/lib/db";
 import { exportarJSON, importarJSON, type BackupBoveda } from "@/lib/actions";
 import { pushToCloud, pullFromCloud } from "@/lib/syncService";
 import { supabaseEnabled } from "@/lib/supabase";
+import { getCotizacionUSD, setCotizacionUSD } from "@/lib/config";
 import { formatMoneda } from "@/lib/utils";
 import {
   Card,
@@ -69,6 +70,8 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <CotizacionSection />
+
       <section>
         <SectionTitle>Backup local</SectionTitle>
         <Card className="flex flex-col gap-3">
@@ -124,6 +127,56 @@ export default function ConfiguracionPage() {
         <NuevaCuentaForm />
       </section>
     </div>
+  );
+}
+
+function CotizacionSection() {
+  const actual = useLiveQuery(() => getCotizacionUSD(), []);
+  const [valor, setValor] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await setCotizacionUSD(Number(valor));
+      setMsg("Cotización actualizada ✓");
+      setValor("");
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "Valor inválido.");
+    }
+  }
+
+  return (
+    <section>
+      <SectionTitle>Cotización del dólar (manual)</SectionTitle>
+      <Card className="flex flex-col gap-3">
+        <p className="text-sm text-zinc-400">
+          La app no consulta ninguna API. Cargá vos el valor de ARS por 1 USD que
+          quieras usar para consolidar patrimonio y metas de ahorro.
+        </p>
+        <p className="text-sm text-zinc-300">
+          Cotización actual:{" "}
+          <span className="font-semibold tabular-nums text-zinc-50">
+            {actual != null ? formatMoneda(actual, "ARS") : "…"}
+          </span>{" "}
+          / USD
+        </p>
+        <form onSubmit={guardar} className="flex items-center gap-2">
+          <input
+            type="number"
+            step="0.01"
+            className={`${inputCls} w-48`}
+            placeholder={actual ? String(actual) : "1000"}
+            value={valor}
+            onChange={(e) => setValor(e.target.value)}
+          />
+          <button type="submit" className={btnCls}>
+            Guardar
+          </button>
+        </form>
+        {msg && <p className="text-xs text-zinc-400">{msg}</p>}
+      </Card>
+    </section>
   );
 }
 

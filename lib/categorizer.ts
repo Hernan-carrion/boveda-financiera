@@ -14,6 +14,8 @@ export interface ResultadoGasto {
   categoria: string;
   descripcion: string;
   textoOriginal: string;
+  /** El motor detectó que este gasto se lo van a reintegrar. */
+  reintegrable: boolean;
 }
 
 /** Normaliza: minúsculas + sin tildes (la ñ pasa a n) para poder matchear. */
@@ -86,19 +88,69 @@ const DICC_TIPOS: { tipo: TipoTransaccion; claves: string[] }[] = [
   { tipo: "devolucion", claves: ["devolvio", "devolvió", "me devolvio", "devolucion"] },
 ];
 
+/** Palabras que marcan un gasto como reintegrable (me lo devuelven después). */
+const CLAVES_REINTEGRABLE = [
+  "reintegrable",
+  "reintegro",
+  "reintegrar",
+  "me lo devuelven",
+  "lo pago yo",
+  "adelanto",
+  "a rendir",
+  "gasto laburo",
+  "gasto trabajo",
+  "obra social",
+];
+
 const DICC_CATEGORIAS: { categoria: string; claves: string[] }[] = [
-  { categoria: "Vehículo", claves: ["nafta", "ypf", "repuesto auto", "auto", "gnc", "cubierta"] },
-  { categoria: "Moto", claves: ["casco", "moto"] },
+  {
+    categoria: "Vehículo",
+    claves: [
+      "nafta",
+      "ypf",
+      "golf",
+      "1.8mi",
+      "1.8 mi",
+      "lavadero",
+      "repuesto auto",
+      "auto",
+      "gnc",
+      "cubierta",
+    ],
+  },
+  { categoria: "Moto", claves: ["casco", "moto", "150cc"] },
   {
     categoria: "Herramientas/Trabajo",
-    claves: ["estaño", "soldador", "alarma", "pantalla", "herramienta", "taller"],
+    claves: [
+      "fa insumos",
+      "repuesto",
+      "estaño",
+      "hikvision",
+      "pantalla",
+      "soldador",
+      "alarma",
+      "herramienta",
+      "taller",
+    ],
   },
   {
     categoria: "Deporte/Ocio",
-    claves: ["futbol", "fútbol", "pesas", "gimnasio", "gym", "pejerrey", "señuelo", "pesca"],
+    claves: [
+      "futbol",
+      "fútbol",
+      "pejerrey",
+      "gym",
+      "pesas",
+      "gimnasio",
+      "señuelo",
+      "pesca",
+    ],
   },
   { categoria: "Salidas", claves: ["sofi", "cine", "cena", "bar", "boliche", "salida"] },
-  { categoria: "Comida", claves: ["chino", "super", "supermercado", "carne", "carniceria", "verduleria"] },
+  {
+    categoria: "Comida",
+    claves: ["super", "chino", "supermercado", "carne", "carniceria", "verduleria"],
+  },
 ];
 
 const CUENTA_DEFAULT = "Efectivo Pesos";
@@ -126,6 +178,8 @@ export function procesarTextoGasto(texto: string): ResultadoGasto {
         ? "Préstamos"
         : "Sin categoría");
 
+  const reintegrable = tipo === "egreso" && contiene(t, CLAVES_REINTEGRABLE);
+
   return {
     monto,
     moneda,
@@ -134,6 +188,7 @@ export function procesarTextoGasto(texto: string): ResultadoGasto {
     categoria,
     descripcion: original.trim(),
     textoOriginal: original,
+    reintegrable,
   };
 }
 
@@ -146,6 +201,21 @@ export const CATEGORIAS_DISPONIBLES = [
   "Comida",
   "Ingresos",
   "Préstamos",
+  "Reintegros",
+  "Suscripciones",
+  "Sin categoría",
+];
+
+/** Categorías de egreso, para armar presupuestos y filtros. */
+export const CATEGORIAS_EGRESO = [
+  "Vehículo",
+  "Moto",
+  "Herramientas/Trabajo",
+  "Deporte/Ocio",
+  "Salidas",
+  "Comida",
+  "Suscripciones",
+  "Tarjetas",
   "Sin categoría",
 ];
 

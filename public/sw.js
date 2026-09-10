@@ -2,8 +2,19 @@
  * Estrategia: Stale-While-Revalidate para same-origin GET.
  * La app es 100% local, así que esto sólo cachea el shell (HTML/CSS/JS/íconos).
  */
-const CACHE = "boveda-cache-v1";
-const PRECACHE = ["/", "/manifest.json", "/icon.svg"];
+const CACHE = "boveda-cache-v2";
+
+// El SW se sirve en la raíz del scope: en GitHub Pages de proyecto eso es
+// /boveda-financiera/sw.js, en local /sw.js. Derivamos la base de acá para que
+// el precache y el fallback offline apunten al lugar correcto.
+const BASE = self.location.pathname.replace(/\/sw\.js$/, "");
+const START_URL = `${BASE}/`;
+const PRECACHE = [
+  START_URL,
+  `${BASE}/manifest.json`,
+  `${BASE}/icon-192.png`,
+  `${BASE}/icon-512.png`,
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -52,7 +63,7 @@ self.addEventListener("fetch", (event) => {
 
       // Fallback de navegación offline
       if (request.mode === "navigate") {
-        const shell = await cache.match("/");
+        const shell = await cache.match(START_URL);
         if (shell) return shell;
       }
       return Response.error();

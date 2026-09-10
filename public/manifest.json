@@ -2,7 +2,7 @@
   "name": "Bóveda Financiera",
   "short_name": "Bóveda",
   "description": "Gestión de finanzas personales 100% local: cuentas, tarjetas, préstamos y metas, multimoneda y offline.",
-  "id": "/",
+  "id": "./",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

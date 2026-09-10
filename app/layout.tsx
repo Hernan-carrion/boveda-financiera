@@ -42,7 +42,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bóveda Financiera",
+  title: "🏦 Bóveda Financiera",
   description:
     "Gestión de finanzas personales 100% local: cuentas, tarjetas y préstamos, multimoneda y offline.",
   manifest: "/manifest.json",
@@ -52,10 +52,7 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Bóveda",
   },
-  icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
-  },
+  // Los íconos los generan `app/icon.tsx` y `app/apple-icon.tsx` en build-time.
 };
 
 export const viewport: Viewport = {
@@ -95,9 +92,14 @@ export default function RootLayout({
             <Link
               href="/"
               prefetch={false}
-              className="font-semibold tracking-tight text-zinc-50"
+              className="font-display text-lg font-bold tracking-tight"
             >
-              🏦 Bóveda
+              <span aria-hidden className="mr-1">
+                🏦
+              </span>
+              <span className="bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
+                Bóveda
+              </span>
             </Link>
             <div className="flex flex-wrap gap-4 text-sm text-zinc-400">
               {navLinks.map(({ href, label, Icon }) => (

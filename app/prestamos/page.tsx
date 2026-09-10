@@ -2,13 +2,17 @@
 
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { HandCoins } from "lucide-react";
-import { bovedaDB, type Moneda, type TipoPrestamo } from "@/lib/db";
+import { HandCoins, TrendingUp, TrendingDown } from "lucide-react";
 import {
-  registrarPrestamo,
-  registrarDevolucionPrestamo,
-} from "@/lib/actions";
-import { formatMoneda, formatFecha } from "@/lib/utils";
+  bovedaDB,
+  type Cuenta,
+  type Moneda,
+  type Prestamo,
+  type TipoPrestamo,
+} from "@/lib/db";
+import { registrarPrestamo, registrarDevolucionPrestamo } from "@/lib/actions";
+import { analizarVolatilidad } from "@/lib/fx";
+import { formatMoneda, formatFecha, formatPct } from "@/lib/utils";
 import {
   Card,
   SectionTitle,
@@ -27,7 +31,8 @@ export default function PrestamosPage() {
   const cuentas = useLiveQuery(() => bovedaDB.cuentas.toArray(), []);
 
   const abiertos = (prestamos ?? []).filter((p) => p.estado === "abierto");
-  const saldados = (prestamos ?? []).filter((p) => p.estado === "saldado");
+  // "!== abierto" cubre "devuelto" y filas viejas migradas desde "saldado"
+  const devueltos = (prestamos ?? []).filter((p) => p.estado !== "abierto");
 
   return (
     <div className="flex flex-col gap-8">
@@ -51,21 +56,12 @@ export default function PrestamosPage() {
         )}
       </section>
 
-      {saldados.length > 0 && (
+      {devueltos.length > 0 && (
         <section>
-          <SectionTitle>Saldados</SectionTitle>
-          <div className="flex flex-col gap-2">
-            {saldados.map((p) => (
-              <Card key={p.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                <span className="font-medium text-zinc-300">{p.persona}</span>
-                <span className="text-zinc-500">
-                  {p.tipo === "otorgado" ? "le presté" : "me prestó"}
-                </span>
-                <span className="ml-auto tabular-nums text-zinc-400 line-through">
-                  {formatMoneda(p.monto, p.moneda)}
-                </span>
-                <span className="text-emerald-400">saldado</span>
-              </Card>
+          <SectionTitle>Devueltos</SectionTitle>
+          <div className="flex flex-col gap-3">
+            {devueltos.map((p) => (
+              <PrestamoDevueltoRow key={p.id} prestamo={p} />
             ))}
           </div>
         </section>
@@ -74,16 +70,13 @@ export default function PrestamosPage() {
   );
 }
 
-function NuevoPrestamoForm({
-  cuentas,
-}: {
-  cuentas: { id?: number; nombre: string; moneda: string }[];
-}) {
+function NuevoPrestamoForm({ cuentas }: { cuentas: Cuenta[] }) {
   const [persona, setPersona] = useState("");
   const [tipo, setTipo] = useState<TipoPrestamo>("otorgado");
   const [monto, setMonto] = useState("");
   const [moneda, setMoneda] = useState<Moneda>("ARS");
   const [cuentaId, setCuentaId] = useState("");
+  const [cotizacionOrigen, setCotizacionOrigen] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
@@ -94,15 +87,18 @@ function NuevoPrestamoForm({
       setMsg("Completá persona, monto y cuenta.");
       return;
     }
+    const cot = Number(cotizacionOrigen);
     await registrarPrestamo({
       persona: persona.trim(),
       tipo,
       monto: m,
       moneda,
       cuenta_id: cid,
+      cotizacion_origen: cot > 0 ? cot : undefined,
     });
     setPersona("");
     setMonto("");
+    setCotizacionOrigen("");
     setMsg("Préstamo asentado ✓");
   }
 
@@ -164,6 +160,17 @@ function NuevoPrestamoForm({
             ))}
           </select>
         </Field>
+        <Field label="Cotización dólar al prestar (ARS/USD)">
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            className={inputCls}
+            value={cotizacionOrigen}
+            onChange={(e) => setCotizacionOrigen(e.target.value)}
+            placeholder="Opcional — para análisis de volatilidad"
+          />
+        </Field>
         <div className="flex items-end">
           <button type="submit" className={btnCls}>
             <HandCoins size={16} />
@@ -180,19 +187,14 @@ function PrestamoRow({
   prestamo,
   cuentas,
 }: {
-  prestamo: {
-    id?: number;
-    persona: string;
-    tipo: TipoPrestamo;
-    monto: number;
-    moneda: Moneda;
-    fecha_prestamo: string;
-  };
-  cuentas: { id?: number; nombre: string; moneda: string }[];
+  prestamo: Prestamo;
+  cuentas: Cuenta[];
 }) {
   const [cuentaId, setCuentaId] = useState("");
   const [monto, setMonto] = useState("");
+  const [cotizacionCierre, setCotizacionCierre] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const tieneOrigen = !!prestamo.cotizacion_origen;
 
   async function devolver(e: React.FormEvent) {
     e.preventDefault();
@@ -202,8 +204,18 @@ function PrestamoRow({
       setMsg("Elegí la cuenta.");
       return;
     }
+    const cot = Number(cotizacionCierre);
+    if (tieneOrigen && !(cot > 0)) {
+      setMsg("Ingresá la cotización del dólar al momento de la devolución.");
+      return;
+    }
     if (prestamo.id == null) return;
-    await registrarDevolucionPrestamo(prestamo.id, cid, m);
+    await registrarDevolucionPrestamo(
+      prestamo.id,
+      cid,
+      m,
+      cot > 0 ? cot : undefined,
+    );
     setMsg("Devolución registrada ✓");
   }
 
@@ -214,13 +226,23 @@ function PrestamoRow({
         <span className="text-zinc-500">
           {prestamo.tipo === "otorgado" ? "le presté" : "me prestó"}
         </span>
-        <span className="text-zinc-500">{formatFecha(prestamo.fecha_prestamo)}</span>
+        <span className="text-zinc-500">
+          {formatFecha(prestamo.fecha_prestamo)}
+        </span>
+        {tieneOrigen && (
+          <span className="rounded-md bg-zinc-800 px-1.5 py-0.5 text-xs tabular-nums text-zinc-400">
+            dólar @ ${prestamo.cotizacion_origen}
+          </span>
+        )}
         <span className="ml-auto tabular-nums font-semibold text-zinc-100">
           {formatMoneda(prestamo.monto, prestamo.moneda)}
         </span>
       </div>
 
-      <form onSubmit={devolver} className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <form
+        onSubmit={devolver}
+        className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
+      >
         <select
           className={inputCls}
           value={cuentaId}
@@ -243,11 +265,91 @@ function PrestamoRow({
           onChange={(e) => setMonto(e.target.value)}
           placeholder={`Total ${prestamo.monto}`}
         />
+        <input
+          type="number"
+          min={0}
+          step="0.01"
+          className={inputCls}
+          value={cotizacionCierre}
+          onChange={(e) => setCotizacionCierre(e.target.value)}
+          placeholder={
+            tieneOrigen ? "Cotización dólar hoy" : "Cotización dólar hoy (opc.)"
+          }
+        />
         <button type="submit" className={btnGhostCls}>
           Registrar devolución
         </button>
       </form>
       {msg && <p className="mt-2 text-xs text-zinc-400">{msg}</p>}
+    </Card>
+  );
+}
+
+function PrestamoDevueltoRow({ prestamo }: { prestamo: Prestamo }) {
+  const vol = analizarVolatilidad(prestamo);
+
+  return (
+    <Card className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+        <span className="font-medium text-zinc-300">{prestamo.persona}</span>
+        <span className="text-zinc-500">
+          {prestamo.tipo === "otorgado" ? "le presté" : "me prestó"}
+        </span>
+        {prestamo.fecha_devolucion && (
+          <span className="text-xs text-zinc-500">
+            devuelto {formatFecha(prestamo.fecha_devolucion)}
+          </span>
+        )}
+        <span className="ml-auto tabular-nums text-zinc-400 line-through">
+          {formatMoneda(prestamo.monto, prestamo.moneda)}
+        </span>
+        <span className="text-emerald-400">devuelto</span>
+      </div>
+
+      {vol ? (
+        <div
+          className={
+            vol.aFavor
+              ? "rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3"
+              : "rounded-lg border border-red-500/30 bg-red-500/10 p-3"
+          }
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={
+                vol.aFavor
+                  ? "inline-flex items-center gap-1 text-sm font-semibold text-emerald-300"
+                  : "inline-flex items-center gap-1 text-sm font-semibold text-red-300"
+              }
+            >
+              {vol.aFavor ? (
+                <TrendingUp size={15} />
+              ) : (
+                <TrendingDown size={15} />
+              )}
+              Diferencia por Volatilidad: {vol.impacto >= 0 ? "+" : "−"}
+              {formatMoneda(Math.abs(vol.impacto), "ARS")} ARS
+            </span>
+            <span
+              className={
+                vol.aFavor
+                  ? "rounded-md bg-emerald-500/20 px-1.5 py-0.5 text-xs font-medium text-emerald-200"
+                  : "rounded-md bg-red-500/20 px-1.5 py-0.5 text-xs font-medium text-red-200"
+              }
+            >
+              {vol.aFavor ? "Ganaste" : "Perdiste"} poder adquisitivo
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-zinc-400 tabular-nums">
+            El dólar pasó de ${vol.origen} a ${vol.cierre} (
+            {formatPct(vol.variacionPct)}) mientras duró el préstamo.
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs text-zinc-600">
+          Sin cotizaciones cargadas — no se puede calcular el impacto cambiario.
+        </p>
+      )}
     </Card>
   );
 }

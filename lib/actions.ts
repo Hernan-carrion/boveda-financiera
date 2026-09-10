@@ -149,8 +149,10 @@ export async function registrarPrestamo(params: {
   monto: number;
   moneda: Moneda;
   cuenta_id: number;
+  /** Cotización del dólar (ARS/USD) al momento del préstamo. Opcional. */
+  cotizacion_origen?: number;
 }) {
-  const { persona, tipo, monto, moneda, cuenta_id } = params;
+  const { persona, tipo, monto, moneda, cuenta_id, cotizacion_origen } = params;
   return bovedaDB.transaction(
     "rw",
     bovedaDB.prestamos,
@@ -184,6 +186,9 @@ export async function registrarPrestamo(params: {
         moneda,
         estado: "abierto",
         fecha_prestamo: new Date().toISOString(),
+        ...(cotizacion_origen && cotizacion_origen > 0
+          ? { cotizacion_origen }
+          : {}),
       });
     },
   );
@@ -193,6 +198,8 @@ export async function registrarDevolucionPrestamo(
   prestamo_id: number,
   cuenta_id: number,
   monto: number,
+  /** Cotización del dólar (ARS/USD) al momento de la devolución. Opcional. */
+  cotizacion_cierre?: number,
 ) {
   return bovedaDB.transaction(
     "rw",
@@ -222,16 +229,59 @@ export async function registrarDevolucionPrestamo(
         fecha: new Date().toISOString(),
       });
 
-      await bovedaDB.prestamos.update(prestamo.id, { estado: "saldado" });
+      await bovedaDB.prestamos.update(prestamo.id, {
+        estado: "devuelto",
+        fecha_devolucion: new Date().toISOString(),
+        ...(cotizacion_cierre && cotizacion_cierre > 0
+          ? { cotizacion_cierre }
+          : {}),
+      });
     },
   );
+}
+
+/* -------------------------- Inversiones / Dólares -------------------------- */
+
+/**
+ * Registra una compra de dólares (MEP, Blue, CCL, etc.).
+ * Guarda el capital en USD, la cotización de compra y el costo total en ARS.
+ */
+export async function registrarCompraDolares(params: {
+  tipo: string;
+  capitalUsd: number;
+  cotizacionCompra: number;
+  nombre?: string;
+}) {
+  const { tipo, capitalUsd, cotizacionCompra } = params;
+  if (!(capitalUsd > 0) || !(cotizacionCompra > 0)) {
+    throw new Error("El monto en USD y la cotización de compra son obligatorios.");
+  }
+  const costo_ars = capitalUsd * cotizacionCompra;
+  return bovedaDB.inversiones.add({
+    nombre: params.nombre?.trim() || `Compra USD ${tipo}`,
+    tipo,
+    capital_inicial: capitalUsd,
+    moneda: "USD",
+    estado: "activa",
+    cotizacion_compra: cotizacionCompra,
+    costo_ars,
+    fecha: new Date().toISOString(),
+  });
+}
+
+export async function cerrarInversion(id: number) {
+  return bovedaDB.inversiones.update(id, { estado: "cerrada" });
+}
+
+export async function borrarInversion(id: number) {
+  return bovedaDB.inversiones.delete(id);
 }
 
 /* -------------------------- Backup JSON -------------------------- */
 
 export interface BackupBoveda {
   __app: "boveda-financiera";
-  version: 1;
+  version: number;
   exportadoEn: string;
   data: {
     cuentas: unknown[];
@@ -256,7 +306,7 @@ export async function exportarJSON(): Promise<BackupBoveda> {
 
   return {
     __app: "boveda-financiera",
-    version: 1,
+    version: 2,
     exportadoEn: new Date().toISOString(),
     data: { cuentas, transacciones, tarjetas, deudas_tarjetas, inversiones, prestamos },
   };

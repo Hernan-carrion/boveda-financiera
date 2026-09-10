@@ -7,6 +7,7 @@ import {
   History,
   CreditCard,
   HandCoins,
+  Coins,
   Settings,
 } from "lucide-react";
 import "./globals.css";
@@ -63,6 +64,7 @@ const navLinks = [
   { href: "/historico", label: "Histórico", Icon: History },
   { href: "/tarjetas", label: "Tarjetas", Icon: CreditCard },
   { href: "/prestamos", label: "Préstamos", Icon: HandCoins },
+  { href: "/inversiones", label: "Inversiones", Icon: Coins },
   { href: "/configuracion", label: "Configuración", Icon: Settings },
 ];
 

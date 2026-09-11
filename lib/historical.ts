@@ -9,6 +9,7 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 import type { Cuenta, Transaccion, Inversion, Moneda } from "./db";
+import { CATEGORIA_CAMBIO_DIVISA } from "./categorizer";
 
 /**
  * Consolidación histórica mes a mes para la vista "Resúmenes mensuales".
@@ -48,8 +49,10 @@ function signo(tipo: Transaccion["tipo"]): number {
 
 const esIngreso = (t: Transaccion) =>
   (t.tipo === "ingreso" || t.tipo === "devolucion") &&
-  t.categoria !== "Reintegros";
-const esEgreso = (t: Transaccion) => t.tipo === "egreso" && !t.reintegrable;
+  t.categoria !== "Reintegros" &&
+  t.categoria !== CATEGORIA_CAMBIO_DIVISA;
+const esEgreso = (t: Transaccion) =>
+  t.tipo === "egreso" && !t.reintegrable && t.categoria !== CATEGORIA_CAMBIO_DIVISA;
 
 function ts(fechaISO: string): number {
   const n = new Date(fechaISO).getTime();

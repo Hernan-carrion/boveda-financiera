@@ -128,6 +128,18 @@ create table if not exists public.configuracion (
   last_updated text
 );
 
+create table if not exists public.compras_tarjeta (
+  id             bigint primary key,
+  tarjeta_id     bigint,
+  descripcion    text,
+  monto_total    double precision default 0,
+  cuotas_totales integer,
+  periodo_inicio text,
+  moneda         text,
+  fecha          text,
+  last_updated   text
+);
+
 -- ============================================================================
 --  SEGURIDAD (RLS) — REQUERIDO para que el sync pueda escribir
 -- ----------------------------------------------------------------------------
@@ -146,7 +158,7 @@ begin
   foreach t in array array['cuentas','transacciones','tarjetas',
                            'deudas_tarjetas','inversiones','prestamos',
                            'presupuestos','suscripciones','metas_ahorro',
-                           'configuracion']
+                           'configuracion','compras_tarjeta']
   loop
     execute format('alter table public.%I enable row level security;', t);
     execute format('drop policy if exists "boveda_rw" on public.%I;', t);

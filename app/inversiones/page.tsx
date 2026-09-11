@@ -2,13 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Coins, Plus, X } from "lucide-react";
+import { ArrowRightLeft, Coins, Plus, X } from "lucide-react";
 import { bovedaDB } from "@/lib/db";
 import {
   registrarCompraDolares,
+  registrarCambioDivisa,
   cerrarInversion,
   borrarInversion,
 } from "@/lib/actions";
+import { getCotizacionUSD } from "@/lib/config";
 import { formatMoneda, formatMonedaCompact, formatFecha } from "@/lib/utils";
 import {
   Card,
@@ -51,7 +53,22 @@ export default function InversionesPage() {
   return (
     <div className="flex flex-col gap-8">
       <section>
-        <SectionTitle>Comprar dólares</SectionTitle>
+        <SectionTitle>Cambio de divisas</SectionTitle>
+        <p className="mb-3 text-xs text-zinc-500">
+          Mueve dinero real entre dos de tus cuentas: sale de la cuenta de
+          origen y entra a la de destino ya convertido con la cotización que
+          cargues. Si compras dólares, también queda registrada la compra acá
+          abajo para el precio promedio.
+        </p>
+        <CambioDivisaForm />
+      </section>
+
+      <section>
+        <SectionTitle>Registrar compra de dólares (sólo cartera)</SectionTitle>
+        <p className="mb-3 text-xs text-zinc-500">
+          Para llevar el precio promedio de compra sin mover plata de ninguna
+          cuenta (por ejemplo, dólares que ya tenías antes de usar la app).
+        </p>
         <CompraDolaresForm />
       </section>
 
@@ -197,6 +214,162 @@ export default function InversionesPage() {
         </section>
       )}
     </div>
+  );
+}
+
+function CambioDivisaForm() {
+  const cuentas = useLiveQuery(() => bovedaDB.cuentas.orderBy("nombre").toArray(), []);
+  const cotizacionGuardada = useLiveQuery(() => getCotizacionUSD(), []);
+
+  const [origenId, setOrigenId] = useState("");
+  const [destinoId, setDestinoId] = useState("");
+  const [monto, setMonto] = useState("");
+  // "" hasta que el usuario la toca: mientras tanto se muestra/usa la
+  // cotización guardada en Configuración como valor por defecto.
+  const [cotizacionInput, setCotizacionInput] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const cotizacion =
+    cotizacionInput !== ""
+      ? cotizacionInput
+      : cotizacionGuardada != null
+        ? String(cotizacionGuardada)
+        : "";
+
+  const origen = cuentas?.find((c) => String(c.id) === origenId);
+  const destino = cuentas?.find((c) => String(c.id) === destinoId);
+  const montoNum = Number(monto);
+  const cotizacionNum = Number(cotizacion);
+  const montoDestino =
+    origen && destino && montoNum > 0 && cotizacionNum > 0
+      ? origen.moneda === "USD"
+        ? montoNum * cotizacionNum
+        : montoNum / cotizacionNum
+      : 0;
+  const operacion =
+    origen && destino
+      ? origen.moneda === "USD"
+        ? "Venta de dólares"
+        : destino.moneda === "USD"
+          ? "Compra de dólares"
+          : null
+      : null;
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    const oid = Number(origenId);
+    const did = Number(destinoId);
+    if (!oid || !did) return setMsg("Elegí cuenta de origen y de destino.");
+    if (!(montoNum > 0)) return setMsg("Ingresá un monto válido.");
+    if (!(cotizacionNum > 0)) return setMsg("Ingresá la cotización.");
+    try {
+      const r = await registrarCambioDivisa({
+        cuenta_origen_id: oid,
+        cuenta_destino_id: did,
+        monto_origen: montoNum,
+        cotizacion: cotizacionNum,
+      });
+      setMonto("");
+      setMsg(
+        `Listo ✓ ${formatMoneda(montoNum, origen!.moneda)} → ${formatMoneda(r.montoDestino, destino!.moneda)}`,
+      );
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "No se pudo registrar el cambio.");
+    }
+  }
+
+  if ((cuentas?.length ?? 0) < 2) {
+    return (
+      <EmptyState>
+        Necesitás al menos dos cuentas (una en ARS y otra en USD) para hacer un
+        cambio de divisas.
+      </EmptyState>
+    );
+  }
+
+  return (
+    <Card>
+      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Field label="Sale de">
+          <select
+            className={inputCls}
+            value={origenId}
+            onChange={(e) => setOrigenId(e.target.value)}
+          >
+            <option value="">Elegir cuenta…</option>
+            {cuentas?.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre} ({c.moneda})
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Entra a">
+          <select
+            className={inputCls}
+            value={destinoId}
+            onChange={(e) => setDestinoId(e.target.value)}
+          >
+            <option value="">Elegir cuenta…</option>
+            {cuentas
+              ?.filter((c) => String(c.id) !== origenId)
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre} ({c.moneda})
+                </option>
+              ))}
+          </select>
+        </Field>
+        <Field label={`Monto${origen ? ` (${origen.moneda})` : ""}`}>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            className={inputCls}
+            value={monto}
+            onChange={(e) => setMonto(e.target.value)}
+            placeholder="0"
+          />
+        </Field>
+        <Field label="Cotización (ARS por USD)">
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            className={inputCls}
+            value={cotizacion}
+            onChange={(e) => setCotizacionInput(e.target.value)}
+            placeholder="1450"
+          />
+        </Field>
+        <div className="flex items-end sm:col-span-2 lg:col-span-4">
+          <button type="submit" className={btnCls}>
+            <ArrowRightLeft size={16} />
+            Registrar cambio
+          </button>
+        </div>
+      </form>
+
+      {origen && destino && origen.moneda !== destino.moneda && (
+        <div className="mt-3 flex items-center gap-2 text-sm">
+          <ArrowRightLeft size={15} className="text-zinc-500" />
+          <span className="text-zinc-500">
+            {operacion ? `${operacion}:` : ""}
+          </span>
+          <span className="font-semibold tabular-nums text-zinc-100">
+            {formatMoneda(montoNum || 0, origen.moneda)} → {" "}
+            {formatMoneda(montoDestino, destino.moneda)}
+          </span>
+        </div>
+      )}
+      {origen && destino && origen.moneda === destino.moneda && (
+        <p className="mt-3 text-xs text-amber-400">
+          Elegí cuentas de distinta moneda (una en ARS y otra en USD).
+        </p>
+      )}
+      {msg && <p className="mt-2 text-xs text-zinc-400">{msg}</p>}
+    </Card>
   );
 }
 

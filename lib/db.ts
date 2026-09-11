@@ -67,6 +67,25 @@ export interface DeudaTarjeta extends Sincronizable {
   estado: EstadoDeuda;
 }
 
+/**
+ * Compra con tarjeta en N cuotas. Es el origen de verdad del plan de pagos:
+ * al registrarla se reparte `monto_total` entre `cuotas_totales` períodos
+ * consecutivos (desde `periodo_inicio`) y cada parte se suma al
+ * `DeudaTarjeta.monto_total` de ese período — así el resumen de cada mes
+ * futuro ya aparece calculado sin tener que cargar nada a mano.
+ */
+export interface CompraTarjeta extends Sincronizable {
+  id?: number;
+  tarjeta_id: number;
+  descripcion: string;
+  monto_total: number;
+  cuotas_totales: number;
+  /** Período ("yyyy-MM") de la primera cuota. */
+  periodo_inicio: string;
+  moneda: Moneda;
+  fecha: string; // ISO string
+}
+
 export type EstadoInversion = "activa" | "cerrada";
 
 export interface Inversion extends Sincronizable {
@@ -151,6 +170,7 @@ export const bovedaDB = new Dexie("BovedaFinancieraDB") as Dexie & {
   suscripciones: EntityTable<Suscripcion, "id">;
   metas_ahorro: EntityTable<MetaAhorro, "id">;
   configuracion: EntityTable<Configuracion, "id">;
+  compras_tarjeta: EntityTable<CompraTarjeta, "id">;
 };
 
 bovedaDB.version(1).stores({
@@ -217,6 +237,16 @@ bovedaDB.version(4).stores({
     "++id, descripcion, categoria, cuenta_id, dia_cobro, activa, last_updated",
   metas_ahorro: "++id, nombre, moneda, last_updated",
   configuracion: "++id, &clave, last_updated",
+});
+
+/**
+ * v5 — compras de tarjeta en cuotas (`compras_tarjeta`). El plan de pagos que
+ * genera se refleja como filas de `deudas_tarjetas` por período; esa tabla no
+ * cambia de esquema.
+ */
+bovedaDB.version(5).stores({
+  compras_tarjeta:
+    "++id, tarjeta_id, periodo_inicio, moneda, fecha, last_updated",
 });
 
 /**

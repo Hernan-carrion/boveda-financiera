@@ -192,6 +192,9 @@ export function procesarTextoGasto(texto: string): ResultadoGasto {
   };
 }
 
+/** Categoría fija de las dos patas (egreso/ingreso) de un cambio de divisa. */
+export const CATEGORIA_CAMBIO_DIVISA = "Cambio de divisa";
+
 export const CATEGORIAS_DISPONIBLES = [
   "Vehículo",
   "Moto",
@@ -203,6 +206,8 @@ export const CATEGORIAS_DISPONIBLES = [
   "Préstamos",
   "Reintegros",
   "Suscripciones",
+  "Tarjetas",
+  CATEGORIA_CAMBIO_DIVISA,
   "Sin categoría",
 ];
 

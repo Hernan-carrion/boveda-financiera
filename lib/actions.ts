@@ -4,8 +4,9 @@ import {
   type Moneda,
   type TipoPrestamo,
 } from "./db";
-import type { ResultadoGasto } from "./categorizer";
+import { CATEGORIA_CAMBIO_DIVISA, type ResultadoGasto } from "./categorizer";
 import { periodoActual } from "./utils";
+import { calcularCuotas } from "./cuotas";
 
 /**
  * Todas las mutaciones pasan por acá para mantener consistente el saldo de
@@ -221,33 +222,75 @@ function estadoDeuda(total: number, pagado: number): EstadoDeuda {
   return "parcial";
 }
 
-export async function registrarConsumoTarjeta(
-  tarjeta_id: number,
-  monto: number,
-  periodo: string = periodoActual(),
-) {
-  return bovedaDB.transaction("rw", bovedaDB.deudas_tarjetas, async () => {
-    const existente = await bovedaDB.deudas_tarjetas
-      .where("tarjeta_id")
-      .equals(tarjeta_id)
-      .and((d) => d.periodo === periodo)
-      .first();
+/**
+ * Suma `monto` al resumen (`deudas_tarjetas`) de un período de una tarjeta,
+ * creándolo si todavía no existe. Es el punto único donde cualquier consumo
+ * (de una sola vez o una cuota de un plan) impacta el resumen mensual.
+ */
+async function sumarDeudaPeriodo(tarjeta_id: number, periodo: string, monto: number) {
+  const existente = await bovedaDB.deudas_tarjetas
+    .where("tarjeta_id")
+    .equals(tarjeta_id)
+    .and((d) => d.periodo === periodo)
+    .first();
 
-    if (existente && existente.id != null) {
-      const total = existente.monto_total + monto;
-      return bovedaDB.deudas_tarjetas.update(existente.id, {
-        monto_total: total,
-        estado: estadoDeuda(total, existente.monto_pagado),
-      });
-    }
-    return bovedaDB.deudas_tarjetas.add({
-      tarjeta_id,
-      periodo,
-      monto_total: monto,
-      monto_pagado: 0,
-      estado: "pendiente",
+  if (existente && existente.id != null) {
+    const total = existente.monto_total + monto;
+    return bovedaDB.deudas_tarjetas.update(existente.id, {
+      monto_total: total,
+      estado: estadoDeuda(total, existente.monto_pagado),
     });
+  }
+  return bovedaDB.deudas_tarjetas.add({
+    tarjeta_id,
+    periodo,
+    monto_total: monto,
+    monto_pagado: 0,
+    estado: "pendiente",
   });
+}
+
+/**
+ * Registra una compra con tarjeta, en una o varias cuotas. Reparte el monto
+ * total (ver `lib/cuotas.ts`) y suma cada parte al período de tarjeta que le
+ * corresponde — incluidos los meses futuros, que ya quedan calculados sin
+ * necesidad de cargarlos a mano cuando llegue el mes.
+ */
+export async function registrarCompraTarjeta(params: {
+  tarjeta_id: number;
+  descripcion: string;
+  monto_total: number;
+  cuotas_totales: number;
+  moneda: Moneda;
+  periodo_inicio?: string;
+}) {
+  const { tarjeta_id, descripcion, monto_total, moneda } = params;
+  if (!(monto_total > 0)) throw new Error("El monto debe ser mayor a 0.");
+  const cuotas_totales = Math.max(1, Math.floor(params.cuotas_totales) || 1);
+  const periodo_inicio = params.periodo_inicio || periodoActual();
+
+  return bovedaDB.transaction(
+    "rw",
+    bovedaDB.compras_tarjeta,
+    bovedaDB.deudas_tarjetas,
+    async () => {
+      const compra_id = await bovedaDB.compras_tarjeta.add({
+        tarjeta_id,
+        descripcion: descripcion.trim() || "Compra",
+        monto_total,
+        cuotas_totales,
+        periodo_inicio,
+        moneda,
+        fecha: new Date().toISOString(),
+      });
+
+      for (const slice of calcularCuotas(monto_total, cuotas_totales, periodo_inicio)) {
+        await sumarDeudaPeriodo(tarjeta_id, slice.periodo, slice.monto);
+      }
+
+      return compra_id;
+    },
+  );
 }
 
 export async function pagarDeudaTarjeta(
@@ -413,6 +456,93 @@ export async function registrarCompraDolares(params: {
   });
 }
 
+/**
+ * Compra o venta de moneda extranjera: mueve dinero real entre dos cuentas
+ * propias de distinta moneda, convertido con la cotización indicada. Sale
+ * `monto_origen` de `cuenta_origen_id` (en su moneda) y entra el equivalente
+ * a `cuenta_destino_id` (en la suya). Si el destino queda en USD, además
+ * registra la compra en `inversiones` para no perder el precio promedio.
+ */
+export async function registrarCambioDivisa(params: {
+  cuenta_origen_id: number;
+  cuenta_destino_id: number;
+  monto_origen: number;
+  /** ARS por 1 USD. */
+  cotizacion: number;
+}) {
+  const { cuenta_origen_id, cuenta_destino_id, monto_origen, cotizacion } = params;
+  if (cuenta_origen_id === cuenta_destino_id) {
+    throw new Error("Elegí dos cuentas distintas.");
+  }
+  if (!(monto_origen > 0)) throw new Error("El monto debe ser mayor a 0.");
+  if (!(cotizacion > 0)) throw new Error("La cotización debe ser mayor a 0.");
+
+  return bovedaDB.transaction(
+    "rw",
+    bovedaDB.cuentas,
+    bovedaDB.transacciones,
+    bovedaDB.inversiones,
+    async () => {
+      const origen = await bovedaDB.cuentas.get(cuenta_origen_id);
+      const destino = await bovedaDB.cuentas.get(cuenta_destino_id);
+      if (!origen || origen.id == null) throw new Error("Cuenta de origen inexistente.");
+      if (!destino || destino.id == null) throw new Error("Cuenta de destino inexistente.");
+      if (origen.moneda === destino.moneda) {
+        throw new Error("Elegí una cuenta en ARS y otra en USD para convertir.");
+      }
+
+      const montoDestino =
+        Math.round(
+          (origen.moneda === "USD" ? monto_origen * cotizacion : monto_origen / cotizacion) *
+            100,
+        ) / 100;
+
+      await bovedaDB.cuentas.update(origen.id, { saldo: origen.saldo - monto_origen });
+      await bovedaDB.cuentas.update(destino.id, { saldo: destino.saldo + montoDestino });
+
+      const fecha = new Date().toISOString();
+      const esCompraUsd = destino.moneda === "USD";
+      const descripcion = esCompraUsd
+        ? `Compra de USD a $${cotizacion} (${origen.nombre} → ${destino.nombre})`
+        : `Venta de USD a $${cotizacion} (${origen.nombre} → ${destino.nombre})`;
+
+      await bovedaDB.transacciones.add({
+        cuenta_id: origen.id,
+        tipo: "egreso",
+        monto: monto_origen,
+        moneda: origen.moneda,
+        categoria: CATEGORIA_CAMBIO_DIVISA,
+        descripcion,
+        fecha,
+      });
+      await bovedaDB.transacciones.add({
+        cuenta_id: destino.id,
+        tipo: "ingreso",
+        monto: montoDestino,
+        moneda: destino.moneda,
+        categoria: CATEGORIA_CAMBIO_DIVISA,
+        descripcion,
+        fecha,
+      });
+
+      if (esCompraUsd) {
+        await bovedaDB.inversiones.add({
+          nombre: `Compra USD (${origen.nombre} → ${destino.nombre})`,
+          tipo: "Cambio de cuenta",
+          capital_inicial: montoDestino,
+          moneda: "USD",
+          estado: "activa",
+          cotizacion_compra: cotizacion,
+          costo_ars: monto_origen,
+          fecha,
+        });
+      }
+
+      return { montoDestino };
+    },
+  );
+}
+
 export async function cerrarInversion(id: number) {
   return bovedaDB.inversiones.update(id, { estado: "cerrada" });
 }
@@ -438,6 +568,7 @@ export interface BackupBoveda {
     suscripciones?: unknown[];
     metas_ahorro?: unknown[];
     configuracion?: unknown[];
+    compras_tarjeta?: unknown[];
   };
 }
 
@@ -453,6 +584,7 @@ export async function exportarJSON(): Promise<BackupBoveda> {
     suscripciones,
     metas_ahorro,
     configuracion,
+    compras_tarjeta,
   ] = await Promise.all([
     bovedaDB.cuentas.toArray(),
     bovedaDB.transacciones.toArray(),
@@ -464,11 +596,12 @@ export async function exportarJSON(): Promise<BackupBoveda> {
     bovedaDB.suscripciones.toArray(),
     bovedaDB.metas_ahorro.toArray(),
     bovedaDB.configuracion.toArray(),
+    bovedaDB.compras_tarjeta.toArray(),
   ]);
 
   return {
     __app: "boveda-financiera",
-    version: 4,
+    version: 5,
     exportadoEn: new Date().toISOString(),
     data: {
       cuentas,
@@ -481,6 +614,7 @@ export async function exportarJSON(): Promise<BackupBoveda> {
       suscripciones,
       metas_ahorro,
       configuracion,
+      compras_tarjeta,
     },
   };
 }
@@ -503,6 +637,7 @@ export async function importarJSON(backup: BackupBoveda) {
       bovedaDB.suscripciones,
       bovedaDB.metas_ahorro,
       bovedaDB.configuracion,
+      bovedaDB.compras_tarjeta,
     ],
     async () => {
       await Promise.all([
@@ -516,6 +651,7 @@ export async function importarJSON(backup: BackupBoveda) {
         bovedaDB.suscripciones.clear(),
         bovedaDB.metas_ahorro.clear(),
         bovedaDB.configuracion.clear(),
+        bovedaDB.compras_tarjeta.clear(),
       ]);
       await Promise.all([
         bovedaDB.cuentas.bulkAdd(data.cuentas as never),
@@ -528,6 +664,7 @@ export async function importarJSON(backup: BackupBoveda) {
         bovedaDB.suscripciones.bulkAdd((data.suscripciones ?? []) as never),
         bovedaDB.metas_ahorro.bulkAdd((data.metas_ahorro ?? []) as never),
         bovedaDB.configuracion.bulkAdd((data.configuracion ?? []) as never),
+        bovedaDB.compras_tarjeta.bulkAdd((data.compras_tarjeta ?? []) as never),
       ]);
     },
   );

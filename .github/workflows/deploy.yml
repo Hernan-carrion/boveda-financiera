@@ -38,6 +38,11 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # Sync a Supabase opcional: si estos secrets no están configurados en
+          # el repo (Settings → Secrets and variables → Actions), quedan vacíos
+          # y el build sigue siendo 100% local (el sync se deshabilita solo).
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

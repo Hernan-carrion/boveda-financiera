@@ -1,5 +1,6 @@
 import { startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import type { Transaccion, Prestamo, Moneda } from "./db";
+import { CATEGORIA_CAMBIO_DIVISA } from "./categorizer";
 
 /**
  * Funciones puras de agregación para el dashboard de métricas.
@@ -27,14 +28,20 @@ function fechaEnMes(fechaISO: string, ref: Date): boolean {
 }
 
 /**
- * Ingresos "reales": se excluye la categoría "Reintegros" porque es sólo el
- * asiento compensatorio de un gasto reintegrable (no es plata nueva).
+ * Ingresos "reales": se excluyen la categoría "Reintegros" (sólo el asiento
+ * compensatorio de un gasto reintegrable, no es plata nueva) y "Cambio de
+ * divisa" (la pata de ingreso de un pase entre cuentas propias).
  */
 const ES_INGRESO = (t: Transaccion) =>
   (t.tipo === "ingreso" || t.tipo === "devolucion") &&
-  t.categoria !== "Reintegros";
-/** Egresos netos: los gastos reintegrables no computan como gasto propio. */
-const ES_EGRESO = (t: Transaccion) => t.tipo === "egreso" && !t.reintegrable;
+  t.categoria !== "Reintegros" &&
+  t.categoria !== CATEGORIA_CAMBIO_DIVISA;
+/**
+ * Egresos netos: los gastos reintegrables no computan como gasto propio, ni
+ * la pata de egreso de un cambio de divisa (es un traspaso, no un gasto).
+ */
+const ES_EGRESO = (t: Transaccion) =>
+  t.tipo === "egreso" && !t.reintegrable && t.categoria !== CATEGORIA_CAMBIO_DIVISA;
 
 /**
  * Total de ingresos y egresos de las transacciones del mes actual.

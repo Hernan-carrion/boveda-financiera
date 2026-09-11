@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { CreditCard, Plus } from "lucide-react";
+import { CreditCard, Layers, Plus } from "lucide-react";
 import { bovedaDB, type Moneda } from "@/lib/db";
-import {
-  registrarConsumoTarjeta,
-  pagarDeudaTarjeta,
-} from "@/lib/actions";
-import { formatMoneda, periodoActual } from "@/lib/utils";
+import { registrarCompraTarjeta, pagarDeudaTarjeta } from "@/lib/actions";
+import { calcularProgresoCompra, montoPorCuota } from "@/lib/cuotas";
+import { formatMoneda, periodoActual, cn } from "@/lib/utils";
+import { ProgressBar } from "@/components/ProgressBar";
 import {
   Card,
   SectionTitle,
@@ -25,7 +24,16 @@ export default function TarjetasPage() {
     () => bovedaDB.deudas_tarjetas.orderBy("periodo").reverse().toArray(),
     [],
   );
+  const compras = useLiveQuery(
+    () => bovedaDB.compras_tarjeta.orderBy("fecha").reverse().toArray(),
+    [],
+  );
   const cuentas = useLiveQuery(() => bovedaDB.cuentas.toArray(), []);
+
+  const nombreTarjeta = (id: number) =>
+    tarjetas?.find((t) => t.id === id)?.nombre ?? "Tarjeta";
+  const monedaTarjeta = (id: number) =>
+    tarjetas?.find((t) => t.id === id)?.moneda ?? "ARS";
 
   return (
     <div className="flex flex-col gap-8">
@@ -70,8 +78,66 @@ export default function TarjetasPage() {
       </section>
 
       <section>
-        <SectionTitle>Registrar consumo</SectionTitle>
-        <ConsumoForm tarjetas={tarjetas ?? []} />
+        <SectionTitle>Registrar compra</SectionTitle>
+        <p className="mb-3 text-xs text-zinc-500">
+          Elegí la cantidad de cuotas y el reparto se calcula solo: cada cuota
+          se suma automáticamente al resumen del período que le corresponde,
+          mes a mes, hasta cubrir el total.
+        </p>
+        <CompraForm tarjetas={tarjetas ?? []} />
+      </section>
+
+      <section>
+        <SectionTitle>Compras en cuotas</SectionTitle>
+        {compras === undefined || deudas === undefined ? (
+          <p className="text-sm text-zinc-500">Cargando…</p>
+        ) : compras.length === 0 ? (
+          <EmptyState>Todavía no registraste compras en cuotas.</EmptyState>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {compras.map((c) => {
+              const deudasDeLaTarjeta = deudas.filter(
+                (d) => d.tarjeta_id === c.tarjeta_id,
+              );
+              const progreso = calcularProgresoCompra(c, deudasDeLaTarjeta);
+              return (
+                <Card key={c.id} className="flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                    <Layers size={15} className="text-zinc-500" />
+                    <span className="font-medium text-zinc-200">
+                      {c.descripcion}
+                    </span>
+                    <span className="text-xs text-zinc-500">
+                      {nombreTarjeta(c.tarjeta_id)}
+                    </span>
+                    <span className="ml-auto tabular-nums text-zinc-300">
+                      {formatMoneda(c.monto_total, c.moneda)} en {c.cuotas_totales}{" "}
+                      {c.cuotas_totales === 1 ? "cuota" : "cuotas"}
+                    </span>
+                  </div>
+                  <ProgressBar pct={progreso.pct} estado="ok" />
+                  <div className="flex flex-wrap items-center justify-between text-xs text-zinc-500">
+                    <span>
+                      {progreso.finalizada
+                        ? "Todas las cuotas pagadas ✓"
+                        : `Cuota ${progreso.cuotasPagadas + 1} de ${progreso.cuotasTotales}`}
+                    </span>
+                    <span>
+                      {formatMoneda(
+                        montoPorCuota(c.monto_total, c.cuotas_totales),
+                        c.moneda,
+                      )}{" "}
+                      por cuota
+                      {progreso.proximoPeriodo && (
+                        <> · próxima: {progreso.proximoPeriodo}</>
+                      )}
+                    </span>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section>
@@ -86,9 +152,8 @@ export default function TarjetasPage() {
               <DeudaRow
                 key={d.id}
                 deuda={d}
-                tarjetaNombre={
-                  tarjetas?.find((t) => t.id === d.tarjeta_id)?.nombre ?? "Tarjeta"
-                }
+                tarjetaNombre={nombreTarjeta(d.tarjeta_id)}
+                moneda={monedaTarjeta(d.tarjeta_id)}
                 cuentas={cuentas ?? []}
               />
             ))}
@@ -187,27 +252,46 @@ function NuevaTarjetaForm() {
   );
 }
 
-function ConsumoForm({
+function CompraForm({
   tarjetas,
 }: {
-  tarjetas: { id?: number; nombre: string }[];
+  tarjetas: { id?: number; nombre: string; moneda: Moneda }[];
 }) {
   const [tarjetaId, setTarjetaId] = useState("");
+  const [descripcion, setDescripcion] = useState("");
   const [monto, setMonto] = useState("");
-  const [periodo, setPeriodo] = useState(periodoActual());
+  const [cuotas, setCuotas] = useState("1");
+  const [periodoInicio, setPeriodoInicio] = useState(periodoActual());
   const [msg, setMsg] = useState<string | null>(null);
+
+  const tarjetaSel = tarjetas.find((t) => String(t.id) === tarjetaId);
+  const montoNum = Number(monto);
+  const cuotasNum = Math.max(1, Math.floor(Number(cuotas)) || 1);
+  const porCuota = montoNum > 0 ? montoPorCuota(montoNum, cuotasNum) : 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const id = Number(tarjetaId);
-    const m = Number(monto);
-    if (!id || !m || m <= 0) {
+    if (!id || !(montoNum > 0)) {
       setMsg("Elegí tarjeta y un monto válido.");
       return;
     }
-    await registrarConsumoTarjeta(id, m, periodo || periodoActual());
+    await registrarCompraTarjeta({
+      tarjeta_id: id,
+      descripcion: descripcion.trim() || "Compra",
+      monto_total: montoNum,
+      cuotas_totales: cuotasNum,
+      moneda: tarjetaSel?.moneda ?? "ARS",
+      periodo_inicio: periodoInicio || periodoActual(),
+    });
+    setDescripcion("");
     setMonto("");
-    setMsg("Consumo registrado ✓");
+    setCuotas("1");
+    setMsg(
+      cuotasNum > 1
+        ? `Compra registrada ✓ — ${cuotasNum} cuotas de ${formatMoneda(porCuota, tarjetaSel?.moneda ?? "ARS")}`
+        : "Compra registrada ✓",
+    );
   }
 
   if (tarjetas.length === 0) {
@@ -216,7 +300,7 @@ function ConsumoForm({
 
   return (
     <Card>
-      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Tarjeta">
           <select
             className={inputCls}
@@ -231,21 +315,40 @@ function ConsumoForm({
             ))}
           </select>
         </Field>
-        <Field label="Monto">
+        <Field label="Descripción">
+          <input
+            className={inputCls}
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            placeholder="Heladera, viaje, insumos…"
+          />
+        </Field>
+        <Field label="Monto total">
           <input
             type="number"
             min={0}
+            step="0.01"
             className={inputCls}
             value={monto}
             onChange={(e) => setMonto(e.target.value)}
           />
         </Field>
-        <Field label="Período (YYYY-MM)">
+        <Field label="Cantidad de cuotas">
           <input
+            type="number"
+            min={1}
+            max={48}
             className={inputCls}
-            value={periodo}
-            onChange={(e) => setPeriodo(e.target.value)}
-            placeholder="2026-09"
+            value={cuotas}
+            onChange={(e) => setCuotas(e.target.value)}
+          />
+        </Field>
+        <Field label="Período de la 1ª cuota">
+          <input
+            type="month"
+            className={inputCls}
+            value={periodoInicio}
+            onChange={(e) => setPeriodoInicio(e.target.value || periodoActual())}
           />
         </Field>
         <div className="flex items-end">
@@ -255,6 +358,16 @@ function ConsumoForm({
           </button>
         </div>
       </form>
+
+      {montoNum > 0 && cuotasNum > 1 && (
+        <p className="mt-3 text-xs text-zinc-400">
+          {cuotasNum} cuotas de{" "}
+          <span className="font-medium text-zinc-200">
+            {formatMoneda(porCuota, tarjetaSel?.moneda ?? "ARS")}
+          </span>{" "}
+          — la última ajusta el redondeo para que sume exacto.
+        </p>
+      )}
       {msg && <p className="mt-3 text-xs text-zinc-400">{msg}</p>}
     </Card>
   );
@@ -263,6 +376,7 @@ function ConsumoForm({
 function DeudaRow({
   deuda,
   tarjetaNombre,
+  moneda,
   cuentas,
 }: {
   deuda: {
@@ -273,6 +387,7 @@ function DeudaRow({
     estado: string;
   };
   tarjetaNombre: string;
+  moneda: Moneda;
   cuentas: { id?: number; nombre: string; moneda: string }[];
 }) {
   const [cuentaId, setCuentaId] = useState("");
@@ -300,19 +415,19 @@ function DeudaRow({
         <span className="font-medium text-zinc-200">{tarjetaNombre}</span>
         <span className="text-zinc-500">{deuda.periodo}</span>
         <span
-          className={
+          className={cn(
             deuda.estado === "pagada"
               ? "text-emerald-400"
               : deuda.estado === "parcial"
                 ? "text-amber-400"
-                : "text-red-400"
-          }
+                : "text-red-400",
+          )}
         >
           {deuda.estado}
         </span>
         <span className="ml-auto tabular-nums text-zinc-300">
-          Pagado {formatMoneda(deuda.monto_pagado, "ARS")} /{" "}
-          {formatMoneda(deuda.monto_total, "ARS")}
+          Pagado {formatMoneda(deuda.monto_pagado, moneda)} /{" "}
+          {formatMoneda(deuda.monto_total, moneda)}
         </span>
       </div>
 

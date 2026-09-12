@@ -1,4 +1,4 @@
-import { bovedaDB } from "./db";
+import { bovedaDB, onEscrituraLocal } from "./db";
 import { supabase } from "./supabase";
 
 /**
@@ -41,16 +41,19 @@ const SIN_CONFIG: SyncResult = {
 
 /**
  * Sube todos los registros locales a Supabase con `upsert` (insert or update).
- * Cada tabla se sube en una sola llamada, que es atómica del lado de Supabase.
+ * Cada tabla se sube por separado y una que falle (ej: todavía no corriste el
+ * schema SQL más nuevo) no frena a las demás — mejor sincronizar lo que se
+ * pueda que no sincronizar nada.
  */
 export async function pushToCloud(): Promise<SyncResult> {
   if (!supabase) return SIN_CONFIG;
 
   const porTabla: Record<string, number> = {};
-  try {
-    const now = new Date().toISOString();
+  const errores: string[] = [];
+  const now = new Date().toISOString();
 
-    for (const tabla of TABLAS) {
+  for (const tabla of TABLAS) {
+    try {
       const filas = await bovedaDB.table(tabla).toArray();
       if (filas.length === 0) {
         porTabla[tabla] = 0;
@@ -68,21 +71,24 @@ export async function pushToCloud(): Promise<SyncResult> {
       if (error) throw new Error(`[${tabla}] ${error.message}`);
 
       porTabla[tabla] = conSello.length;
+    } catch (err) {
+      errores.push(pistaError(err));
     }
+  }
 
+  if (errores.length === 0) {
     return {
       ok: true,
       message: "Sincronizado correctamente (subida a la nube).",
       porTabla,
     };
-  } catch (err) {
-    return {
-      ok: false,
-      message: "Error al subir a la nube.",
-      detail: pistaError(err),
-      porTabla,
-    };
   }
+  return {
+    ok: false,
+    message: `Subida parcial: fallaron ${errores.length} de ${TABLAS.length} tablas.`,
+    detail: errores.join(" · "),
+    porTabla,
+  };
 }
 
 /** Traduce errores frecuentes a algo accionable. */
@@ -94,41 +100,61 @@ function pistaError(err: unknown): string {
   if (/Invalid path specified/i.test(msg)) {
     return `${msg} — NEXT_PUBLIC_SUPABASE_URL debe ser la Project URL (https://xxx.supabase.co), sin /rest/v1.`;
   }
+  if (/could not find the table|schema cache/i.test(msg)) {
+    return `${msg} — Correspondé a una tabla nueva de la app: corré (o volvé a correr) supabase_sync_schema.sql completo en el SQL Editor de Supabase.`;
+  }
   return msg;
 }
 
 /**
+ * true mientras `pullFromCloud` está escribiendo localmente lo que bajó de
+ * Supabase. El auto-push (ver más abajo) lo respeta para no re-subir en el
+ * acto los mismos datos que se acaban de traer.
+ */
+let aplicandoCambiosRemotos = false;
+
+/**
  * Descarga todos los registros de Supabase y los aplica localmente con
- * `bulkPut` de Dexie (inserta o reemplaza por clave primaria).
+ * `bulkPut` de Dexie (inserta o reemplaza por clave primaria). Igual que
+ * `pushToCloud`, una tabla que falle no frena la descarga de las demás.
  */
 export async function pullFromCloud(): Promise<SyncResult> {
   if (!supabase) return SIN_CONFIG;
 
   const porTabla: Record<string, number> = {};
+  const errores: string[] = [];
+  aplicandoCambiosRemotos = true;
   try {
     for (const tabla of TABLAS) {
-      const { data, error } = await supabase.from(tabla).select("*");
-      if (error) throw new Error(`[${tabla}] ${error.message}`);
+      try {
+        const { data, error } = await supabase.from(tabla).select("*");
+        if (error) throw new Error(`[${tabla}] ${error.message}`);
 
-      const filas = data ?? [];
-      if (filas.length > 0) {
-        await bovedaDB.table(tabla).bulkPut(filas as never[]);
+        const filas = data ?? [];
+        if (filas.length > 0) {
+          await bovedaDB.table(tabla).bulkPut(filas as never[]);
+        }
+        porTabla[tabla] = filas.length;
+      } catch (err) {
+        errores.push(pistaError(err));
       }
-      porTabla[tabla] = filas.length;
     }
 
-    return {
-      ok: true,
-      message: "Sincronizado correctamente (descarga desde la nube).",
-      porTabla,
-    };
-  } catch (err) {
+    if (errores.length === 0) {
+      return {
+        ok: true,
+        message: "Sincronizado correctamente (descarga desde la nube).",
+        porTabla,
+      };
+    }
     return {
       ok: false,
-      message: "Error al descargar de la nube.",
-      detail: pistaError(err),
+      message: `Descarga parcial: fallaron ${errores.length} de ${TABLAS.length} tablas.`,
+      detail: errores.join(" · "),
       porTabla,
     };
+  } finally {
+    aplicandoCambiosRemotos = false;
   }
 }
 
@@ -197,10 +223,17 @@ let canalRealtime: ReturnType<NonNullable<typeof supabase>["channel"]> | null =
  *  2. Reintento de la cola offline pendiente.
  *  3. Listener `online` para vaciar la cola cuando vuelve la red.
  *  4. Suscripción realtime (WebSocket) a cambios remotos → pull + callback.
+ *  5. Auto-push en tiempo real: cualquier escritura local (de cualquier
+ *     tabla, sea por una acción de `lib/actions.ts` o un CRUD directo de una
+ *     página) dispara un push a los pocos milisegundos, sin que el usuario
+ *     tenga que tocar el botón "Subir a la nube".
  *
  * Es idempotente: llamarla varias veces no duplica listeners.
  */
-export function startAutoSync(onRemoteChange?: () => void): () => void {
+export function startAutoSync(
+  onRemoteChange?: () => void,
+  onAutoPushResult?: (r: SyncResult) => void,
+): () => void {
   if (typeof window === "undefined") return () => {};
   if (!supabase) return () => {};
   if (autoSyncIniciado) return () => {};
@@ -241,10 +274,25 @@ export function startAutoSync(onRemoteChange?: () => void): () => void {
   }
   canalRealtime.subscribe();
 
+  // 5: auto-push — cualquier escritura local dispara un push (con un
+  // pequeño debounce para agrupar ráfagas de escrituras, ej. cargar varios
+  // movimientos seguidos, sin pisar la cola offline si estamos sin red).
+  let autoPushPendiente: ReturnType<typeof setTimeout> | null = null;
+  const programarAutoPush = () => {
+    if (aplicandoCambiosRemotos) return; // esto vino de un pull, no de mí
+    if (autoPushPendiente) clearTimeout(autoPushPendiente);
+    autoPushPendiente = setTimeout(() => {
+      void pushConCola().then((r) => onAutoPushResult?.(r));
+    }, 700);
+  };
+  const quitarListenerEscritura = onEscrituraLocal(programarAutoPush);
+
   // Cleanup
   return () => {
     window.removeEventListener("online", alVolverOnline);
     if (pullPendiente) clearTimeout(pullPendiente);
+    if (autoPushPendiente) clearTimeout(autoPushPendiente);
+    quitarListenerEscritura();
     if (canalRealtime) {
       void cliente.removeChannel(canalRealtime);
       canalRealtime = null;

@@ -264,4 +264,43 @@ bovedaDB.on("populate", () => {
   bovedaDB.configuracion.add({ clave: CLAVE_COTIZACION_USD, valor: "1000" });
 });
 
+/* ============================================================================
+ *  Observación de escrituras locales — para el auto-push en tiempo real
+ * ========================================================================== */
+
+type ListenerEscritura = () => void;
+const listenersEscrituraLocal = new Set<ListenerEscritura>();
+
+/**
+ * Suscribe una función que se dispara apenas se confirma (commit) cualquier
+ * escritura en cualquier tabla de la app — sea por una función de
+ * `lib/actions.ts` o un `bovedaDB.tabla.add/update/delete` directo desde una
+ * página. `syncService` la usa para disparar el push a Supabase en tiempo
+ * real sin tener que instrumentar cada mutación una por una.
+ * Devuelve la función para desuscribirse.
+ */
+export function onEscrituraLocal(fn: ListenerEscritura): () => void {
+  listenersEscrituraLocal.add(fn);
+  return () => listenersEscrituraLocal.delete(fn);
+}
+
+function avisarEscrituraLocal() {
+  for (const fn of listenersEscrituraLocal) fn();
+}
+
+// Se engancha una sola vez, a todas las tablas existentes, vía los hooks
+// nativos de Dexie (creating/updating/deleting). `transaction.on("complete")`
+// asegura que el aviso salga recién cuando el cambio ya quedó confirmado.
+for (const tabla of bovedaDB.tables) {
+  tabla.hook("creating", (_key, _obj, transaction) => {
+    transaction.on("complete", avisarEscrituraLocal);
+  });
+  tabla.hook("updating", (_mods, _key, _obj, transaction) => {
+    transaction.on("complete", avisarEscrituraLocal);
+  });
+  tabla.hook("deleting", (_key, _obj, transaction) => {
+    transaction.on("complete", avisarEscrituraLocal);
+  });
+}
+
 export default bovedaDB;

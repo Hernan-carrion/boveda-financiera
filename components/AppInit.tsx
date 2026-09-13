@@ -10,7 +10,8 @@ import { supabaseEnabled } from "@/lib/supabase";
  * Inicialización de la app en el cliente:
  *  - Cobra las suscripciones vencidas del mes y avisa con un toast.
  *  - Arranca la sincronización automática con la nube (pull + realtime + cola
- *    offline) si Supabase está configurado.
+ *    offline + auto-push en tiempo real de cada cambio local) si Supabase
+ *    está configurado.
  * Se monta una sola vez desde el layout raíz.
  */
 export default function AppInit() {
@@ -33,9 +34,21 @@ export default function AppInit() {
 
     let limpiar: (() => void) | undefined;
     if (supabaseEnabled) {
-      limpiar = startAutoSync(() => {
-        if (!cancelado) toast("Datos sincronizados desde la nube");
-      });
+      limpiar = startAutoSync(
+        () => {
+          if (!cancelado) toast("Datos sincronizados desde la nube");
+        },
+        (resultado) => {
+          // Silencioso cuando sale bien (pasa después de casi cualquier
+          // acción); sólo avisamos si el auto-push falló, para que se pueda
+          // actuar (ej: reintentar cuando vuelva la conexión).
+          if (!cancelado && !resultado.ok) {
+            toast.error("No se pudo sincronizar con la nube", {
+              description: resultado.detail ?? resultado.message,
+            });
+          }
+        },
+      );
     }
 
     return () => {

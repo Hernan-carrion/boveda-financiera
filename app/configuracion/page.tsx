@@ -210,6 +210,14 @@ function CloudSyncSection() {
             y volvé a compilar.
           </p>
         )}
+        {supabaseEnabled && (
+          <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-300">
+            Sincronización automática activada: cada cambio que cargás acá se
+            sube solo a los pocos segundos, y lo que subas desde otro
+            dispositivo baja solo en tiempo real. Los botones de abajo son
+            para forzarlo a mano si hace falta.
+          </p>
+        )}
         <p className="text-sm text-zinc-400">
           Subí la base local a la nube o traé la versión de la nube a este
           dispositivo. Usa <strong>upsert por id</strong>, así podés mantener la
@@ -227,7 +235,7 @@ function CloudSyncSection() {
             ) : (
               <Cloud size={16} />
             )}
-            Subir a la Nube (Push)
+            Forzar subida ahora (Push)
           </button>
           <button
             type="button"
@@ -240,7 +248,7 @@ function CloudSyncSection() {
             ) : (
               <Cloud size={16} />
             )}
-            Descargar de la Nube (Pull)
+            Forzar descarga ahora (Pull)
           </button>
         </div>
         {res && (

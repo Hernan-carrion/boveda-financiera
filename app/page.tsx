@@ -10,7 +10,7 @@ import { consolidarPatrimonio } from "@/lib/patrimonio";
 import { calcularAvances } from "@/lib/presupuestos";
 import { formatMoneda, formatMonedaCompact, formatFecha, cn, periodoActual } from "@/lib/utils";
 import QuickInput from "@/components/QuickInput";
-import EditarCategoriaModal from "@/components/EditarCategoriaModal";
+import EditarMovimientoModal from "@/components/EditarMovimientoModal";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Card, SectionTitle, EmptyState } from "@/components/ui";
 
@@ -35,10 +35,18 @@ export default function DashboardPage() {
   const presupuestos = useLiveQuery(() => bovedaDB.presupuestos.toArray(), []);
   const transacciones = useLiveQuery(
     () =>
-      bovedaDB.transacciones.orderBy("fecha").reverse().limit(12).toArray(),
+      bovedaDB.transacciones
+        .orderBy("fecha")
+        .reverse()
+        .filter((t) => !t.eliminado)
+        .limit(12)
+        .toArray(),
     [],
   );
-  const txsMes = useLiveQuery(() => bovedaDB.transacciones.toArray(), []);
+  const txsMes = useLiveQuery(
+    () => bovedaDB.transacciones.filter((t) => !t.eliminado).toArray(),
+    [],
+  );
 
   const [monedaHero, setMonedaHero] = useState<Moneda>("ARS");
   const [editando, setEditando] = useState<Transaccion | null>(null);
@@ -280,7 +288,11 @@ export default function DashboardPage() {
         )}
       </section>
 
-      <EditarCategoriaModal tx={editando} onClose={() => setEditando(null)} />
+      <EditarMovimientoModal
+        tx={editando}
+        cuentas={cuentas ?? []}
+        onClose={() => setEditando(null)}
+      />
     </div>
   );
 }

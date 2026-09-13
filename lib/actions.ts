@@ -3,6 +3,7 @@ import {
   type EstadoDeuda,
   type Moneda,
   type TipoPrestamo,
+  type TipoTransaccion,
 } from "./db";
 import { CATEGORIA_CAMBIO_DIVISA, type ResultadoGasto } from "./categorizer";
 import { periodoActual } from "./utils";
@@ -67,7 +68,7 @@ export async function marcarReintegrado(id: number) {
     async () => {
       const tx = await bovedaDB.transacciones.get(id);
       if (!tx || tx.id == null) throw new Error("Movimiento inexistente.");
-      if (!tx.reintegrable || tx.reintegrado) return;
+      if (!tx.reintegrable || tx.reintegrado || tx.eliminado) return;
 
       const cuenta = await bovedaDB.cuentas.get(tx.cuenta_id);
       if (cuenta && cuenta.id != null) {
@@ -91,22 +92,90 @@ export async function marcarReintegrado(id: number) {
   );
 }
 
-export async function actualizarCategoria(id: number, categoria: string) {
-  return bovedaDB.transacciones.update(id, { categoria });
+export interface CambiosTransaccion {
+  cuenta_id?: number;
+  tipo?: TipoTransaccion;
+  monto?: number;
+  moneda?: Moneda;
+  categoria?: string;
+  descripcion?: string;
+  fecha?: string;
 }
 
-export async function borrarTransaccion(id: number) {
-  const tx = await bovedaDB.transacciones.get(id);
-  if (!tx) return;
+/**
+ * Edita un movimiento ya cargado. Revierte el efecto que tenía sobre el
+ * saldo de su cuenta original y aplica el efecto nuevo — puede cambiar de
+ * cuenta, tipo o monto sin dejar el saldo inconsistente. Sólo se tocan los
+ * campos presentes en `cambios`.
+ */
+export async function actualizarTransaccion(id: number, cambios: CambiosTransaccion) {
   return bovedaDB.transaction("rw", bovedaDB.cuentas, bovedaDB.transacciones, async () => {
+    const actual = await bovedaDB.transacciones.get(id);
+    if (!actual || actual.id == null) throw new Error("Movimiento inexistente.");
+
+    const cuentaVieja = await bovedaDB.cuentas.get(actual.cuenta_id);
+    if (cuentaVieja && cuentaVieja.id != null) {
+      const revert = -signo(actual.tipo) * Math.abs(actual.monto);
+      await bovedaDB.cuentas.update(cuentaVieja.id, { saldo: cuentaVieja.saldo + revert });
+    }
+
+    const nuevoCuentaId = cambios.cuenta_id ?? actual.cuenta_id;
+    const nuevoTipo = cambios.tipo ?? actual.tipo;
+    const nuevoMonto = cambios.monto != null ? Math.abs(cambios.monto) : actual.monto;
+
+    const cuentaNueva = await bovedaDB.cuentas.get(nuevoCuentaId);
+    if (!cuentaNueva || cuentaNueva.id == null) throw new Error("Cuenta inexistente.");
+    const delta = signo(nuevoTipo) * nuevoMonto;
+    await bovedaDB.cuentas.update(cuentaNueva.id, { saldo: cuentaNueva.saldo + delta });
+
+    await bovedaDB.transacciones.update(id, {
+      cuenta_id: nuevoCuentaId,
+      tipo: nuevoTipo,
+      monto: nuevoMonto,
+      moneda: cambios.moneda ?? actual.moneda,
+      categoria: cambios.categoria ?? actual.categoria,
+      descripcion: cambios.descripcion ?? actual.descripcion,
+      fecha: cambios.fecha ?? actual.fecha,
+      last_updated: new Date().toISOString(),
+    });
+  });
+}
+
+/**
+ * "Borra" un movimiento: revierte su efecto en el saldo de la cuenta y lo
+ * marca `eliminado: true` (borrado lógico — ver el comentario en `lib/db.ts`
+ * sobre por qué no se borra físicamente). Queda fuera de todas las vistas.
+ */
+export async function borrarTransaccion(id: number) {
+  return bovedaDB.transaction("rw", bovedaDB.cuentas, bovedaDB.transacciones, async () => {
+    const tx = await bovedaDB.transacciones.get(id);
+    if (!tx || tx.id == null || tx.eliminado) return;
+
     const cuenta = await bovedaDB.cuentas.get(tx.cuenta_id);
     if (cuenta && cuenta.id != null) {
-      // revertir el efecto en el saldo
       const revert = -signo(tx.tipo) * Math.abs(tx.monto);
       await bovedaDB.cuentas.update(cuenta.id, { saldo: cuenta.saldo + revert });
     }
-    await bovedaDB.transacciones.delete(id);
+    await bovedaDB.transacciones.update(tx.id, {
+      eliminado: true,
+      last_updated: new Date().toISOString(),
+    });
   });
+}
+
+/**
+ * Borra TODOS los movimientos (borrado lógico, ver arriba) sin tocar el
+ * saldo de ninguna cuenta — quedan tal cual están ahora, como si fuera el
+ * saldo inicial de cada una. Al ser lógico, el auto-push lo sube a la nube
+ * normalmente y de ahí se propaga a cualquier otro dispositivo que
+ * sincronice (a diferencia de un borrado físico, que un simple upsert no
+ * puede "avisar" a nadie).
+ */
+export async function reiniciarMovimientos() {
+  const ahora = new Date().toISOString();
+  await bovedaDB.transacciones
+    .filter((t) => !t.eliminado)
+    .modify({ eliminado: true, last_updated: ahora });
 }
 
 /* -------------------------- Suscripciones -------------------------- */
@@ -176,7 +245,10 @@ function csvCell(v: unknown): string {
 
 /** Convierte toda la tabla `transacciones` de Dexie a texto CSV. */
 export async function transaccionesToCSV(): Promise<string> {
-  const filas = await bovedaDB.transacciones.orderBy("fecha").toArray();
+  const filas = await bovedaDB.transacciones
+    .orderBy("fecha")
+    .filter((t) => !t.eliminado)
+    .toArray();
   const cuentas = await bovedaDB.cuentas.toArray();
   const nombreCuenta = (id: number) =>
     cuentas.find((c) => c.id === id)?.nombre ?? String(id);

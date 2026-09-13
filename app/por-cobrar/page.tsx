@@ -12,7 +12,7 @@ export default function PorCobrarPage() {
   const reintegrables = useLiveQuery(
     () =>
       bovedaDB.transacciones
-        .filter((t) => t.reintegrable === true)
+        .filter((t) => t.reintegrable === true && !t.eliminado)
         .toArray(),
     [],
   );

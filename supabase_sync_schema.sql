@@ -34,12 +34,14 @@ create table if not exists public.transacciones (
   fecha        text,
   reintegrable boolean default false,
   reintegrado  boolean default false,
+  eliminado    boolean default false,
   last_updated text
 );
 
 -- Alta de columnas nuevas si la tabla ya existía de una versión anterior.
 alter table public.transacciones add column if not exists reintegrable boolean default false;
 alter table public.transacciones add column if not exists reintegrado  boolean default false;
+alter table public.transacciones add column if not exists eliminado    boolean default false;
 
 create table if not exists public.tarjetas (
   id              bigint primary key,

@@ -45,6 +45,12 @@ export interface Transaccion extends Sincronizable {
   reintegrable?: boolean;
   /** Ya cobré el reintegro (se generó el ingreso compensatorio). */
   reintegrado?: boolean;
+  /**
+   * Borrado lógico: la fila sigue existiendo (para que el borrado se pueda
+   * sincronizar con un upsert normal) pero se excluye de todas las vistas y
+   * cálculos. La UI nunca borra físicamente un movimiento.
+   */
+  eliminado?: boolean;
 }
 
 export interface Tarjeta extends Sincronizable {
@@ -247,6 +253,17 @@ bovedaDB.version(4).stores({
 bovedaDB.version(5).stores({
   compras_tarjeta:
     "++id, tarjeta_id, periodo_inicio, moneda, fecha, last_updated",
+});
+
+/**
+ * v6 — borrado lógico de transacciones (`eliminado`). Permite editar o
+ * eliminar un movimiento después de cargado sin romper la sincronización: un
+ * borrado físico no se puede "subir" con upsert, uno lógico sí (es una fila
+ * más que se actualiza).
+ */
+bovedaDB.version(6).stores({
+  transacciones:
+    "++id, cuenta_id, tipo, monto, moneda, categoria, descripcion, fecha, reintegrable, eliminado, last_updated",
 });
 
 /**

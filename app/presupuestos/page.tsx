@@ -31,7 +31,10 @@ export default function PresupuestosPage() {
     () => bovedaDB.presupuestos.toArray(),
     [],
   );
-  const transacciones = useLiveQuery(() => bovedaDB.transacciones.toArray(), []);
+  const transacciones = useLiveQuery(
+    () => bovedaDB.transacciones.filter((t) => !t.eliminado).toArray(),
+    [],
+  );
 
   const cargando = presupuestos === undefined || transacciones === undefined;
   const avances = calcularAvances(presupuestos ?? [], transacciones ?? [], mes);

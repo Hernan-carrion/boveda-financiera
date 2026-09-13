@@ -7,11 +7,17 @@ import {
   Upload,
   Plus,
   RefreshCw,
+  Trash2,
   Cloud,
   Loader2,
 } from "lucide-react";
 import { bovedaDB, type Moneda, type TipoCuenta } from "@/lib/db";
-import { exportarJSON, importarJSON, type BackupBoveda } from "@/lib/actions";
+import {
+  exportarJSON,
+  importarJSON,
+  reiniciarMovimientos,
+  type BackupBoveda,
+} from "@/lib/actions";
 import { pushToCloud, pullFromCloud } from "@/lib/syncService";
 import { supabaseEnabled } from "@/lib/supabase";
 import { getCotizacionUSD, setCotizacionUSD } from "@/lib/config";
@@ -68,6 +74,18 @@ export default function ConfiguracionPage() {
     window.location.reload();
   }
 
+  async function handleReiniciarMovimientos() {
+    if (
+      !window.confirm(
+        "Esto borra todos los movimientos (el historial de transacciones). Los saldos de las cuentas NO se tocan, quedan como están ahora. Si tenés sync con la nube activado, se propaga a tus otros dispositivos. ¿Continuar?",
+      )
+    ) {
+      return;
+    }
+    await reiniciarMovimientos();
+    setMsg("Movimientos reiniciados ✓ — los saldos quedaron sin tocar.");
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <CotizacionSection />
@@ -103,7 +121,16 @@ export default function ConfiguracionPage() {
               <RefreshCw size={16} />
               Reiniciar datos
             </button>
+            <button onClick={handleReiniciarMovimientos} className={btnGhostCls}>
+              <Trash2 size={16} />
+              Reiniciar movimientos
+            </button>
           </div>
+          <p className="text-xs text-zinc-500">
+            &quot;Reiniciar movimientos&quot; borra solo el historial de
+            transacciones — cuentas, tarjetas, saldos y todo lo demás quedan
+            igual.
+          </p>
           {msg && <p className="text-xs text-zinc-400">{msg}</p>}
         </Card>
       </section>

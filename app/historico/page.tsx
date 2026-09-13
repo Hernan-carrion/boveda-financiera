@@ -27,7 +27,10 @@ function pctChange(cur: number, prev: number): number | null {
 
 export default function HistoricoPage() {
   const cuentas = useLiveQuery(() => bovedaDB.cuentas.toArray(), []);
-  const transacciones = useLiveQuery(() => bovedaDB.transacciones.toArray(), []);
+  const transacciones = useLiveQuery(
+    () => bovedaDB.transacciones.filter((t) => !t.eliminado).toArray(),
+    [],
+  );
   const inversiones = useLiveQuery(() => bovedaDB.inversiones.toArray(), []);
 
   const [selected, setSelected] = useState<MonthKey>(() => monthKey());

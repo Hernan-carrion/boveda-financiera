@@ -15,7 +15,10 @@ import CategoryPieChart from "@/components/charts/CategoryPieChart";
 import MetricsCards from "@/components/charts/MetricsCards";
 
 export default function ResumenPage() {
-  const transacciones = useLiveQuery(() => bovedaDB.transacciones.toArray(), []);
+  const transacciones = useLiveQuery(
+    () => bovedaDB.transacciones.filter((t) => !t.eliminado).toArray(),
+    [],
+  );
   const prestamos = useLiveQuery(() => bovedaDB.prestamos.toArray(), []);
 
   const cargando = transacciones === undefined || prestamos === undefined;

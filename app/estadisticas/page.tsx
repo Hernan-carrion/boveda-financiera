@@ -21,7 +21,10 @@ import CategoryPieChart from "@/components/charts/CategoryPieChart";
 
 export default function EstadisticasPage() {
   const cuentas = useLiveQuery(() => bovedaDB.cuentas.toArray(), []);
-  const transacciones = useLiveQuery(() => bovedaDB.transacciones.toArray(), []);
+  const transacciones = useLiveQuery(
+    () => bovedaDB.transacciones.filter((t) => !t.eliminado).toArray(),
+    [],
+  );
   const inversiones = useLiveQuery(() => bovedaDB.inversiones.toArray(), []);
   const [descargando, setDescargando] = useState(false);
 

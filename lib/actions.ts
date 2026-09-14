@@ -2,6 +2,7 @@ import {
   bovedaDB,
   type EstadoDeuda,
   type Moneda,
+  type Suscripcion,
   type TipoPrestamo,
   type TipoTransaccion,
 } from "./db";
@@ -233,6 +234,81 @@ export async function procesarSuscripcionesVencidas(
   }
 
   return cobradas;
+}
+
+/**
+ * Recorre las suscripciones activas y devuelve las que se cobran en
+ * exactamente 2 días y todavía no se cobraron ni se avisaron para ese
+ * período — para mostrar un aviso ("se viene tal cobro") sin cobrar nada
+ * todavía. Marca el aviso para no repetirlo cada vez que se abre la app
+ * durante esos 2 días.
+ */
+export async function avisarSuscripcionesProximas(
+  hoy: Date = new Date(),
+): Promise<Suscripcion[]> {
+  const enDosDias = new Date(hoy);
+  enDosDias.setDate(enDosDias.getDate() + 2);
+  const diaObjetivo = enDosDias.getDate();
+  const periodo = periodoActual(enDosDias);
+
+  const activas = await bovedaDB.suscripciones
+    .filter((s) => s.activa === true)
+    .toArray();
+
+  const proximas: Suscripcion[] = [];
+  for (const sus of activas) {
+    if (sus.id == null) continue;
+    if (sus.dia_cobro !== diaObjetivo) continue;
+    if (sus.ultimo_cobro_periodo === periodo) continue;
+    if (sus.ultimo_aviso_periodo === periodo) continue;
+
+    await bovedaDB.suscripciones.update(sus.id, {
+      ultimo_aviso_periodo: periodo,
+      last_updated: new Date().toISOString(),
+    });
+    proximas.push(sus);
+  }
+
+  return proximas;
+}
+
+/* -------------------------- Sueldo -------------------------- */
+
+/**
+ * Acredita un cobro de sueldo directo a la cuenta "Mercado Pago" (siempre
+ * esa, por diseño). El monto lo elige quien llama — puede ser el que está
+ * precargado en Configuración o uno distinto cargado al vuelo.
+ */
+export async function cobrarSueldo(
+  monto: number,
+): Promise<{ moneda: Moneda; monto: number }> {
+  if (!(monto > 0)) throw new Error("El monto debe ser mayor a 0.");
+
+  return bovedaDB.transaction(
+    "rw",
+    bovedaDB.cuentas,
+    bovedaDB.transacciones,
+    async () => {
+      const cuenta = await bovedaDB.cuentas.where("nombre").equals("Mercado Pago").first();
+      if (!cuenta || cuenta.id == null) {
+        throw new Error('No encontré una cuenta llamada "Mercado Pago".');
+      }
+
+      const m = Math.abs(monto);
+      await bovedaDB.cuentas.update(cuenta.id, { saldo: cuenta.saldo + m });
+      await bovedaDB.transacciones.add({
+        cuenta_id: cuenta.id,
+        tipo: "ingreso",
+        monto: m,
+        moneda: cuenta.moneda,
+        categoria: "Sueldo",
+        descripcion: "Cobro de sueldo",
+        fecha: new Date().toISOString(),
+      });
+
+      return { moneda: cuenta.moneda, monto: m };
+    },
+  );
 }
 
 /* -------------------------- Exportación CSV -------------------------- */

@@ -20,7 +20,12 @@ import {
 } from "@/lib/actions";
 import { pushToCloud, pullFromCloud } from "@/lib/syncService";
 import { supabaseEnabled } from "@/lib/supabase";
-import { getCotizacionUSD, setCotizacionUSD } from "@/lib/config";
+import {
+  getCotizacionUSD,
+  setCotizacionUSD,
+  getMontoSueldo,
+  setMontoSueldo,
+} from "@/lib/config";
 import { formatMoneda } from "@/lib/utils";
 import {
   Card,
@@ -89,6 +94,7 @@ export default function ConfiguracionPage() {
   return (
     <div className="flex flex-col gap-8">
       <CotizacionSection />
+      <SueldoSection />
 
       <section>
         <SectionTitle>Backup local</SectionTitle>
@@ -194,6 +200,64 @@ function CotizacionSection() {
             step="0.01"
             className={`${inputCls} w-48`}
             placeholder={actual ? String(actual) : "1000"}
+            value={valor}
+            onChange={(e) => setValor(e.target.value)}
+          />
+          <button type="submit" className={btnCls}>
+            Guardar
+          </button>
+        </form>
+        {msg && <p className="text-xs text-zinc-400">{msg}</p>}
+      </Card>
+    </section>
+  );
+}
+
+function SueldoSection() {
+  const actual = useLiveQuery(() => getMontoSueldo(), []);
+  const [valor, setValor] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await setMontoSueldo(Number(valor));
+      setMsg("Monto de sueldo actualizado ✓");
+      setValor("");
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "Valor inválido.");
+    }
+  }
+
+  return (
+    <section>
+      <SectionTitle>Monto de sueldo</SectionTitle>
+      <Card className="flex flex-col gap-3">
+        <p className="text-sm text-zinc-400">
+          Monto que aparece precargado en el botón &quot;Cobrar sueldo&quot;
+          del dashboard. Siempre se acredita a Mercado Pago; si un mes cobrás
+          distinto (adelanto, etc.), lo podés cambiar ahí mismo al momento de
+          cobrar sin tocar esto.
+        </p>
+        {actual ? (
+          <p className="text-sm text-zinc-300">
+            Monto actual:{" "}
+            <span className="font-semibold tabular-nums text-zinc-50">
+              {formatMoneda(actual, "ARS")}
+            </span>
+          </p>
+        ) : (
+          <p className="text-xs text-amber-300">
+            Todavía no configuraste un monto fijo.
+          </p>
+        )}
+        <form onSubmit={guardar} className="flex items-center gap-2">
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            className={`${inputCls} w-48`}
+            placeholder={actual ? String(actual) : "0"}
             value={valor}
             onChange={(e) => setValor(e.target.value)}
           />

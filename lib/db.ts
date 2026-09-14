@@ -147,6 +147,8 @@ export interface Suscripcion extends Sincronizable {
   activa: boolean;
   /** Último período "yyyy-MM" en el que ya se generó el cobro automático. */
   ultimo_cobro_periodo?: string;
+  /** Último período "yyyy-MM" en el que ya se avisó "se cobra en 2 días". */
+  ultimo_aviso_periodo?: string;
 }
 
 /** Objetivo de ahorro (Ej: "Moto 150cc", "Llantas Golf"). */
@@ -271,6 +273,8 @@ bovedaDB.version(6).stores({
  */
 /** Clave en `configuracion` para la cotización ARS/USD manual del usuario. */
 export const CLAVE_COTIZACION_USD = "cotizacion_usd";
+/** Clave en `configuracion` para el monto de sueldo precargado del botón "Cobrar sueldo". */
+export const CLAVE_MONTO_SUELDO = "monto_sueldo";
 
 bovedaDB.on("populate", () => {
   bovedaDB.cuentas.bulkAdd([

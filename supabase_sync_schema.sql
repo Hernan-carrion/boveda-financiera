@@ -145,6 +145,15 @@ create table if not exists public.compras_tarjeta (
   last_updated   text
 );
 
+-- Calendario de la "cuenta sueldo" de referencia (no mueve plata real).
+create table if not exists public.dias_trabajados (
+  id           bigint primary key,
+  fecha        text unique,
+  turno        text,
+  monto        double precision default 0,
+  last_updated text
+);
+
 -- ============================================================================
 --  SEGURIDAD (RLS) — REQUERIDO para que el sync pueda escribir
 -- ----------------------------------------------------------------------------
@@ -163,7 +172,7 @@ begin
   foreach t in array array['cuentas','transacciones','tarjetas',
                            'deudas_tarjetas','inversiones','prestamos',
                            'presupuestos','suscripciones','metas_ahorro',
-                           'configuracion','compras_tarjeta']
+                           'configuracion','compras_tarjeta','dias_trabajados']
   loop
     execute format('alter table public.%I enable row level security;', t);
     execute format('drop policy if exists "boveda_rw" on public.%I;', t);

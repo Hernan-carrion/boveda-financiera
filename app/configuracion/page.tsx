@@ -25,6 +25,9 @@ import {
   setCotizacionUSD,
   getMontoSueldo,
   setMontoSueldo,
+  getTarifasTurno,
+  setTarifaMedioTurno,
+  setTarifaTurnoCompleto,
 } from "@/lib/config";
 import { formatMoneda } from "@/lib/utils";
 import {
@@ -95,6 +98,7 @@ export default function ConfiguracionPage() {
     <div className="flex flex-col gap-8">
       <CotizacionSection />
       <SueldoSection />
+      <TarifasTurnoSection />
 
       <section>
         <SectionTitle>Backup local</SectionTitle>
@@ -264,6 +268,86 @@ function SueldoSection() {
           <button type="submit" className={btnCls}>
             Guardar
           </button>
+        </form>
+        {msg && <p className="text-xs text-zinc-400">{msg}</p>}
+      </Card>
+    </section>
+  );
+}
+
+function TarifasTurnoSection() {
+  const tarifas = useLiveQuery(() => getTarifasTurno(), []);
+  const [medio, setMedio] = useState("");
+  const [completo, setCompleto] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      if (medio) await setTarifaMedioTurno(Number(medio));
+      if (completo) await setTarifaTurnoCompleto(Number(completo));
+      setMsg("Tarifas actualizadas ✓");
+      setMedio("");
+      setCompleto("");
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "Valor inválido.");
+    }
+  }
+
+  return (
+    <section>
+      <SectionTitle>Tarifas de la cuenta sueldo (por turno)</SectionTitle>
+      <Card className="flex flex-col gap-3">
+        <p className="text-sm text-zinc-400">
+          Cuánto vale cada día trabajado según el turno. Se usan en{" "}
+          <a href="/sueldo" className="underline hover:text-zinc-300">
+            Cuenta sueldo
+          </a>{" "}
+          para marcar días y para la estimación mensual — es sólo una
+          referencia, no mueve plata de ninguna cuenta.
+        </p>
+        <div className="flex flex-wrap gap-6 text-sm text-zinc-300">
+          <p>
+            Medio turno actual:{" "}
+            <span className="font-semibold tabular-nums text-zinc-50">
+              {tarifas ? formatMoneda(tarifas.medio, "ARS") : "…"}
+            </span>
+          </p>
+          <p>
+            Turno completo actual:{" "}
+            <span className="font-semibold tabular-nums text-zinc-50">
+              {tarifas ? formatMoneda(tarifas.completo, "ARS") : "…"}
+            </span>
+          </p>
+        </div>
+        <form onSubmit={guardar} className="grid gap-3 sm:grid-cols-3">
+          <Field label="Medio turno">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className={inputCls}
+              placeholder={tarifas ? String(tarifas.medio) : "20000"}
+              value={medio}
+              onChange={(e) => setMedio(e.target.value)}
+            />
+          </Field>
+          <Field label="Turno completo">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className={inputCls}
+              placeholder={tarifas ? String(tarifas.completo) : "40000"}
+              value={completo}
+              onChange={(e) => setCompleto(e.target.value)}
+            />
+          </Field>
+          <div className="flex items-end">
+            <button type="submit" className={btnCls}>
+              Guardar
+            </button>
+          </div>
         </form>
         {msg && <p className="text-xs text-zinc-400">{msg}</p>}
       </Card>

@@ -5,10 +5,12 @@ import {
   type Suscripcion,
   type TipoPrestamo,
   type TipoTransaccion,
+  type TipoTurno,
 } from "./db";
 import { CATEGORIA_CAMBIO_DIVISA, type ResultadoGasto } from "./categorizer";
 import { periodoActual } from "./utils";
 import { calcularCuotas } from "./cuotas";
+import { getTarifasTurno } from "./config";
 
 /**
  * Todas las mutaciones pasan por acá para mantener consistente el saldo de
@@ -309,6 +311,30 @@ export async function cobrarSueldo(
       return { moneda: cuenta.moneda, monto: m };
     },
   );
+}
+
+/**
+ * Marca (o desmarca) un día en el calendario de la "cuenta sueldo" de
+ * referencia. NO mueve plata real ni toca ninguna cuenta — sólo registra
+ * qué turno se trabajó ese día, con el monto congelado a la tarifa vigente
+ * en ese momento (para no reescribir el pasado si después cambian las
+ * tarifas). "ninguno" actualiza la fila en vez de borrarla, así el
+ * desmarcado también se sincroniza bien con el auto-push.
+ */
+export async function marcarDiaTrabajado(
+  fecha: string,
+  turno: TipoTurno,
+): Promise<void> {
+  const tarifas = await getTarifasTurno();
+  const monto = turno === "completo" ? tarifas.completo : turno === "medio" ? tarifas.medio : 0;
+  const ahora = new Date().toISOString();
+
+  const existente = await bovedaDB.dias_trabajados.where("fecha").equals(fecha).first();
+  if (existente && existente.id != null) {
+    await bovedaDB.dias_trabajados.update(existente.id, { turno, monto, last_updated: ahora });
+  } else {
+    await bovedaDB.dias_trabajados.add({ fecha, turno, monto, last_updated: ahora });
+  }
 }
 
 /* -------------------------- Exportación CSV -------------------------- */
@@ -717,6 +743,7 @@ export interface BackupBoveda {
     metas_ahorro?: unknown[];
     configuracion?: unknown[];
     compras_tarjeta?: unknown[];
+    dias_trabajados?: unknown[];
   };
 }
 
@@ -733,6 +760,7 @@ export async function exportarJSON(): Promise<BackupBoveda> {
     metas_ahorro,
     configuracion,
     compras_tarjeta,
+    dias_trabajados,
   ] = await Promise.all([
     bovedaDB.cuentas.toArray(),
     bovedaDB.transacciones.toArray(),
@@ -745,11 +773,12 @@ export async function exportarJSON(): Promise<BackupBoveda> {
     bovedaDB.metas_ahorro.toArray(),
     bovedaDB.configuracion.toArray(),
     bovedaDB.compras_tarjeta.toArray(),
+    bovedaDB.dias_trabajados.toArray(),
   ]);
 
   return {
     __app: "boveda-financiera",
-    version: 5,
+    version: 7,
     exportadoEn: new Date().toISOString(),
     data: {
       cuentas,
@@ -763,6 +792,7 @@ export async function exportarJSON(): Promise<BackupBoveda> {
       metas_ahorro,
       configuracion,
       compras_tarjeta,
+      dias_trabajados,
     },
   };
 }
@@ -786,6 +816,7 @@ export async function importarJSON(backup: BackupBoveda) {
       bovedaDB.metas_ahorro,
       bovedaDB.configuracion,
       bovedaDB.compras_tarjeta,
+      bovedaDB.dias_trabajados,
     ],
     async () => {
       await Promise.all([
@@ -800,6 +831,7 @@ export async function importarJSON(backup: BackupBoveda) {
         bovedaDB.metas_ahorro.clear(),
         bovedaDB.configuracion.clear(),
         bovedaDB.compras_tarjeta.clear(),
+        bovedaDB.dias_trabajados.clear(),
       ]);
       await Promise.all([
         bovedaDB.cuentas.bulkAdd(data.cuentas as never),
@@ -813,6 +845,7 @@ export async function importarJSON(backup: BackupBoveda) {
         bovedaDB.metas_ahorro.bulkAdd((data.metas_ahorro ?? []) as never),
         bovedaDB.configuracion.bulkAdd((data.configuracion ?? []) as never),
         bovedaDB.compras_tarjeta.bulkAdd((data.compras_tarjeta ?? []) as never),
+        bovedaDB.dias_trabajados.bulkAdd((data.dias_trabajados ?? []) as never),
       ]);
     },
   );

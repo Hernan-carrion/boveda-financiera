@@ -1,4 +1,11 @@
-import { bovedaDB, CLAVE_COTIZACION_USD, CLAVE_MONTO_SUELDO, type Moneda } from "./db";
+import {
+  bovedaDB,
+  CLAVE_COTIZACION_USD,
+  CLAVE_MONTO_SUELDO,
+  CLAVE_TARIFA_MEDIO_TURNO,
+  CLAVE_TARIFA_TURNO_COMPLETO,
+  type Moneda,
+} from "./db";
 
 /**
  * Acceso a la tabla `configuracion` (pares clave/valor en IndexedDB).
@@ -60,6 +67,39 @@ export async function setMontoSueldo(valor: number): Promise<void> {
     throw new Error("El monto debe ser un número mayor a 0.");
   }
   await setConfig(CLAVE_MONTO_SUELDO, String(n));
+}
+
+export const TARIFA_MEDIO_TURNO_DEFAULT = 20000;
+export const TARIFA_TURNO_COMPLETO_DEFAULT = 40000;
+
+/** Tarifas por día de la "cuenta sueldo" de referencia. Nunca 0/NaN. */
+export async function getTarifasTurno(): Promise<{ medio: number; completo: number }> {
+  const [medioRaw, completoRaw] = await Promise.all([
+    getConfig(CLAVE_TARIFA_MEDIO_TURNO),
+    getConfig(CLAVE_TARIFA_TURNO_COMPLETO),
+  ]);
+  const medio = Number(medioRaw);
+  const completo = Number(completoRaw);
+  return {
+    medio: Number.isFinite(medio) && medio > 0 ? medio : TARIFA_MEDIO_TURNO_DEFAULT,
+    completo: Number.isFinite(completo) && completo > 0 ? completo : TARIFA_TURNO_COMPLETO_DEFAULT,
+  };
+}
+
+export async function setTarifaMedioTurno(valor: number): Promise<void> {
+  const n = Number(valor);
+  if (!Number.isFinite(n) || n <= 0) {
+    throw new Error("El monto debe ser un número mayor a 0.");
+  }
+  await setConfig(CLAVE_TARIFA_MEDIO_TURNO, String(n));
+}
+
+export async function setTarifaTurnoCompleto(valor: number): Promise<void> {
+  const n = Number(valor);
+  if (!Number.isFinite(n) || n <= 0) {
+    throw new Error("El monto debe ser un número mayor a 0.");
+  }
+  await setConfig(CLAVE_TARIFA_TURNO_COMPLETO, String(n));
 }
 
 /**

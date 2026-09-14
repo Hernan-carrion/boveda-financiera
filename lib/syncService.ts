@@ -22,6 +22,7 @@ const TABLAS = [
   "metas_ahorro",
   "configuracion",
   "compras_tarjeta",
+  "dias_trabajados",
 ] as const;
 
 export type TablaSync = (typeof TABLAS)[number];

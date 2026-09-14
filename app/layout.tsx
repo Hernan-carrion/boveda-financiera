@@ -14,6 +14,7 @@ import {
   PiggyBank,
   BarChart3,
   Receipt,
+  CalendarCheck,
 } from "lucide-react";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
@@ -84,6 +85,7 @@ const navLinks = [
   { href: "/presupuestos", label: "Presupuestos", Icon: Target },
   { href: "/metas", label: "Metas", Icon: PiggyBank },
   { href: "/suscripciones", label: "Suscripciones", Icon: Repeat },
+  { href: "/sueldo", label: "Cuenta sueldo", Icon: CalendarCheck },
   { href: "/por-cobrar", label: "Por cobrar", Icon: Receipt },
   { href: "/estadisticas", label: "Estadísticas", Icon: BarChart3 },
   { href: "/resumen", label: "Resumen", Icon: PieChart },

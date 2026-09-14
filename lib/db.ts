@@ -167,6 +167,22 @@ export interface Configuracion extends Sincronizable {
   valor: string;
 }
 
+export type TipoTurno = "ninguno" | "medio" | "completo";
+
+/**
+ * Registro de un día de trabajo (calendario de la "cuenta sueldo" de
+ * referencia — no mueve plata real, sólo lleva la cuenta de cuánto sueldo
+ * entra a Mercado Pago). Una fila por fecha; "ninguno" en vez de borrar la
+ * fila cuando se desmarca un día, así el borrado también sincroniza bien.
+ */
+export interface DiaTrabajado extends Sincronizable {
+  id?: number;
+  fecha: string; // "yyyy-MM-dd", única
+  turno: TipoTurno;
+  /** Monto de ese día según la tarifa vigente al marcarlo (0 si "ninguno"). */
+  monto: number;
+}
+
 export const bovedaDB = new Dexie("BovedaFinancieraDB") as Dexie & {
   cuentas: EntityTable<Cuenta, "id">;
   transacciones: EntityTable<Transaccion, "id">;
@@ -179,6 +195,7 @@ export const bovedaDB = new Dexie("BovedaFinancieraDB") as Dexie & {
   metas_ahorro: EntityTable<MetaAhorro, "id">;
   configuracion: EntityTable<Configuracion, "id">;
   compras_tarjeta: EntityTable<CompraTarjeta, "id">;
+  dias_trabajados: EntityTable<DiaTrabajado, "id">;
 };
 
 bovedaDB.version(1).stores({
@@ -269,12 +286,24 @@ bovedaDB.version(6).stores({
 });
 
 /**
+ * v7 — calendario de la "cuenta sueldo" (`dias_trabajados`): un día por
+ * fecha, con el turno trabajado ("ninguno"/"medio"/"completo"). Es de
+ * referencia — no mueve plata ni cuenta como una `cuenta` real.
+ */
+bovedaDB.version(7).stores({
+  dias_trabajados: "++id, &fecha, turno, last_updated",
+});
+
+/**
  * Cuentas base que se crean la primera vez que se abre la app.
  */
 /** Clave en `configuracion` para la cotización ARS/USD manual del usuario. */
 export const CLAVE_COTIZACION_USD = "cotizacion_usd";
 /** Clave en `configuracion` para el monto de sueldo precargado del botón "Cobrar sueldo". */
 export const CLAVE_MONTO_SUELDO = "monto_sueldo";
+/** Claves en `configuracion` para las tarifas por día de la cuenta sueldo. */
+export const CLAVE_TARIFA_MEDIO_TURNO = "tarifa_medio_turno";
+export const CLAVE_TARIFA_TURNO_COMPLETO = "tarifa_turno_completo";
 
 bovedaDB.on("populate", () => {
   bovedaDB.cuentas.bulkAdd([

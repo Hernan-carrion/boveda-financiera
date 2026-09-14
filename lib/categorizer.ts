@@ -203,6 +203,7 @@ export const CATEGORIAS_DISPONIBLES = [
   "Salidas",
   "Comida",
   "Ingresos",
+  "Sueldo",
   "Préstamos",
   "Reintegros",
   "Suscripciones",

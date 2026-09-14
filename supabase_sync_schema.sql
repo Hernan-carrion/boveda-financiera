@@ -111,8 +111,11 @@ create table if not exists public.suscripciones (
   dia_cobro             integer,
   activa                boolean default true,
   ultimo_cobro_periodo  text,
+  ultimo_aviso_periodo  text,
   last_updated          text
 );
+
+alter table public.suscripciones add column if not exists ultimo_aviso_periodo text;
 
 create table if not exists public.metas_ahorro (
   id             bigint primary key,

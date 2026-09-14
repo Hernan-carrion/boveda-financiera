@@ -1,4 +1,4 @@
-import { bovedaDB, CLAVE_COTIZACION_USD, type Moneda } from "./db";
+import { bovedaDB, CLAVE_COTIZACION_USD, CLAVE_MONTO_SUELDO, type Moneda } from "./db";
 
 /**
  * Acceso a la tabla `configuracion` (pares clave/valor en IndexedDB).
@@ -42,6 +42,24 @@ export async function setCotizacionUSD(valor: number): Promise<void> {
     throw new Error("La cotización debe ser un número mayor a 0.");
   }
   await setConfig(CLAVE_COTIZACION_USD, String(n));
+}
+
+/**
+ * Monto de sueldo precargado para el botón "Cobrar sueldo" del dashboard.
+ * 0 si todavía no se configuró ninguno.
+ */
+export async function getMontoSueldo(): Promise<number> {
+  const raw = await getConfig(CLAVE_MONTO_SUELDO);
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+export async function setMontoSueldo(valor: number): Promise<void> {
+  const n = Number(valor);
+  if (!Number.isFinite(n) || n <= 0) {
+    throw new Error("El monto debe ser un número mayor a 0.");
+  }
+  await setConfig(CLAVE_MONTO_SUELDO, String(n));
 }
 
 /**

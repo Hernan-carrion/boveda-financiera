@@ -10,6 +10,7 @@ import { consolidarPatrimonio } from "@/lib/patrimonio";
 import { calcularAvances } from "@/lib/presupuestos";
 import { formatMoneda, formatMonedaCompact, formatFecha, cn, periodoActual } from "@/lib/utils";
 import QuickInput from "@/components/QuickInput";
+import CobrarSueldoButton from "@/components/CobrarSueldoButton";
 import EditarMovimientoModal from "@/components/EditarMovimientoModal";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Card, SectionTitle, EmptyState } from "@/components/ui";
@@ -235,8 +236,11 @@ export default function DashboardPage() {
       </section>
 
       <section>
-        <SectionTitle>Carga rápida</SectionTitle>
-        <QuickInput />
+        <SectionTitle>Acciones rápidas</SectionTitle>
+        <div className="flex flex-col gap-3">
+          <CobrarSueldoButton />
+          <QuickInput />
+        </div>
       </section>
 
       {/* Movimientos recientes — tap para editar categoría (modal glass) */}

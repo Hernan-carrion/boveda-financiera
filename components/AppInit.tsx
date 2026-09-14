@@ -2,13 +2,15 @@
 
 import { useEffect } from "react";
 import { Toaster, toast } from "sonner";
-import { procesarSuscripcionesVencidas } from "@/lib/actions";
+import { avisarSuscripcionesProximas, procesarSuscripcionesVencidas } from "@/lib/actions";
 import { startAutoSync } from "@/lib/syncService";
 import { supabaseEnabled } from "@/lib/supabase";
+import { formatMoneda } from "@/lib/utils";
 
 /**
  * Inicialización de la app en el cliente:
  *  - Cobra las suscripciones vencidas del mes y avisa con un toast.
+ *  - Avisa (sin cobrar) las suscripciones que se cobran en 2 días.
  *  - Arranca la sincronización automática con la nube (pull + realtime + cola
  *    offline + auto-push en tiempo real de cada cambio local) si Supabase
  *    está configurado.
@@ -27,6 +29,20 @@ export default function AppInit() {
             : `Se registraron ${cobradas.length} suscripciones del mes`,
           { description: cobradas.join(" · ") },
         );
+      })
+      .catch(() => {
+        /* no bloquea la carga de la app */
+      });
+
+    avisarSuscripcionesProximas()
+      .then((proximas) => {
+        if (cancelado || proximas.length === 0) return;
+        proximas.forEach((s) => {
+          toast(`"${s.descripcion}" se cobra en 2 días`, {
+            description: formatMoneda(s.monto, s.moneda),
+            icon: "⏰",
+          });
+        });
       })
       .catch(() => {
         /* no bloquea la carga de la app */

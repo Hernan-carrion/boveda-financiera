@@ -16,7 +16,7 @@ import {
   totalesDelMes,
 } from "@/lib/sueldo";
 import { marcarDiaTrabajado } from "@/lib/actions";
-import { formatMoneda, cn } from "@/lib/utils";
+import { formatMoneda, formatPct, cn } from "@/lib/utils";
 import { Card, SectionTitle } from "@/components/ui";
 import IngresoExtraButton from "@/components/IngresoExtraButton";
 
@@ -71,6 +71,12 @@ export default function SueldoPage() {
   const mapa = mapaPorFecha(diasDelMesActual);
   const celdas = diasDelMes(mes);
   const relleno = celdas.length > 0 ? celdas[0].diaSemana : 0;
+
+  const totalCombinado = totales.total + totalComisiones + totalTrabajoIndependiente;
+  const pctVsEstimado =
+    estimacion && estimacion.totalTurnoCompleto > 0
+      ? (totales.total / estimacion.totalTurnoCompleto) * 100
+      : null;
 
   async function tocarDia(fecha: string) {
     const actual = mapa.get(fecha)?.turno ?? "ninguno";
@@ -201,6 +207,9 @@ export default function SueldoPage() {
             <p className="text-xs text-zinc-500">
               {totales.diasTrabajados} días marcados · {totales.diasMedioTurno} medio
               turno · {totales.diasTurnoCompleto} turno completo
+              {pctVsEstimado != null && (
+                <> · {formatPct(pctVsEstimado - 100)} vs. estimado a turno completo</>
+              )}
             </p>
           </div>
         </Card>
@@ -225,10 +234,27 @@ export default function SueldoPage() {
             Icon={Briefcase}
           />
         </Card>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      </section>
+
+      <section>
+        <SectionTitle>Resumen del mes</SectionTitle>
+        <p className="mb-3 text-xs text-zinc-500">
+          Todo lo que entró por tu trabajo este mes: el calendario de la
+          cuenta sueldo (referencia) más las comisiones y trabajos
+          independientes reales cobrados a Mercado Pago.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
           <Card>
             <p className="text-xs uppercase tracking-wide text-zinc-500">
-              Comisiones este mes
+              Sueldo (días marcados)
+            </p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-50">
+              {formatMoneda(totales.total, "ARS")}
+            </p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-zinc-500">
+              Comisiones
             </p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-50">
               {formatMoneda(totalComisiones, monedaMercadoPago)}
@@ -236,13 +262,27 @@ export default function SueldoPage() {
           </Card>
           <Card>
             <p className="text-xs uppercase tracking-wide text-zinc-500">
-              Trabajos independientes este mes
+              Trabajo independiente
             </p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-50">
               {formatMoneda(totalTrabajoIndependiente, monedaMercadoPago)}
             </p>
           </Card>
         </div>
+        <Card className="mt-3 flex flex-wrap items-center gap-4">
+          <Wallet size={20} className="text-emerald-400" />
+          <div>
+            <p className="text-2xl font-semibold tabular-nums text-zinc-50">
+              {formatMoneda(totalCombinado, "ARS")}
+            </p>
+            <p className="text-xs text-zinc-500">
+              Total cobrado este mes
+              {pctVsEstimado != null && (
+                <> · {pctVsEstimado.toFixed(0)}% del estimado a turno completo</>
+              )}
+            </p>
+          </div>
+        </Card>
       </section>
     </div>
   );

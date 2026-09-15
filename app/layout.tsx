@@ -15,6 +15,7 @@ import {
   BarChart3,
   Receipt,
   CalendarCheck,
+  ListFilter,
 } from "lucide-react";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
@@ -82,6 +83,7 @@ export const viewport: Viewport = {
 
 const navLinks = [
   { href: "/", label: "Dashboard", Icon: Wallet },
+  { href: "/movimientos", label: "Movimientos", Icon: ListFilter },
   { href: "/presupuestos", label: "Presupuestos", Icon: Target },
   { href: "/metas", label: "Metas", Icon: PiggyBank },
   { href: "/suscripciones", label: "Suscripciones", Icon: Repeat },

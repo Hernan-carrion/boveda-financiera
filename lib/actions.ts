@@ -7,7 +7,12 @@ import {
   type TipoTransaccion,
   type TipoTurno,
 } from "./db";
-import { CATEGORIA_CAMBIO_DIVISA, type ResultadoGasto } from "./categorizer";
+import {
+  CATEGORIA_CAMBIO_DIVISA,
+  CATEGORIA_COMISION,
+  CATEGORIA_TRABAJO_INDEPENDIENTE,
+  type ResultadoGasto,
+} from "./categorizer";
 import { periodoActual } from "./utils";
 import { calcularCuotas } from "./cuotas";
 import { getTarifasTurno } from "./config";
@@ -305,6 +310,52 @@ export async function cobrarSueldo(
         moneda: cuenta.moneda,
         categoria: "Sueldo",
         descripcion: "Cobro de sueldo",
+        fecha: new Date().toISOString(),
+      });
+
+      return { moneda: cuenta.moneda, monto: m };
+    },
+  );
+}
+
+/** Categorías válidas para `cobrarIngresoExtra`. */
+export type CategoriaIngresoExtra =
+  | typeof CATEGORIA_COMISION
+  | typeof CATEGORIA_TRABAJO_INDEPENDIENTE;
+
+/**
+ * Acredita un ingreso extra (comisión o trabajo independiente) directo a la
+ * cuenta "Mercado Pago" — misma lógica que `cobrarSueldo` pero para estos
+ * otros ingresos, que no tienen un monto fijo precargado porque varían cada
+ * vez. Están relacionados a la "cuenta sueldo" de referencia: son otra forma
+ * de plata que entra por trabajo, además del sueldo.
+ */
+export async function cobrarIngresoExtra(
+  categoria: CategoriaIngresoExtra,
+  monto: number,
+  descripcion?: string,
+): Promise<{ moneda: Moneda; monto: number }> {
+  if (!(monto > 0)) throw new Error("El monto debe ser mayor a 0.");
+
+  return bovedaDB.transaction(
+    "rw",
+    bovedaDB.cuentas,
+    bovedaDB.transacciones,
+    async () => {
+      const cuenta = await bovedaDB.cuentas.where("nombre").equals("Mercado Pago").first();
+      if (!cuenta || cuenta.id == null) {
+        throw new Error('No encontré una cuenta llamada "Mercado Pago".');
+      }
+
+      const m = Math.abs(monto);
+      await bovedaDB.cuentas.update(cuenta.id, { saldo: cuenta.saldo + m });
+      await bovedaDB.transacciones.add({
+        cuenta_id: cuenta.id,
+        tipo: "ingreso",
+        monto: m,
+        moneda: cuenta.moneda,
+        categoria,
+        descripcion: descripcion?.trim() || categoria,
         fecha: new Date().toISOString(),
       });
 

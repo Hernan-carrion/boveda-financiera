@@ -195,6 +195,10 @@ export function procesarTextoGasto(texto: string): ResultadoGasto {
 /** Categoría fija de las dos patas (egreso/ingreso) de un cambio de divisa. */
 export const CATEGORIA_CAMBIO_DIVISA = "Cambio de divisa";
 
+/** Ingresos extra vía "Cobrar comisión" / "Cobrar trabajo independiente" (siempre a Mercado Pago). */
+export const CATEGORIA_COMISION = "Comisiones";
+export const CATEGORIA_TRABAJO_INDEPENDIENTE = "Trabajo independiente";
+
 export const CATEGORIAS_DISPONIBLES = [
   "Vehículo",
   "Moto",
@@ -204,6 +208,8 @@ export const CATEGORIAS_DISPONIBLES = [
   "Comida",
   "Ingresos",
   "Sueldo",
+  CATEGORIA_COMISION,
+  CATEGORIA_TRABAJO_INDEPENDIENTE,
   "Préstamos",
   "Reintegros",
   "Suscripciones",

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { CreditCard, Layers, Plus } from "lucide-react";
+import { addMonths } from "date-fns";
+import { CalendarClock, CreditCard, Layers, Plus } from "lucide-react";
 import { bovedaDB, type Moneda } from "@/lib/db";
 import { registrarCompraTarjeta, pagarDeudaTarjeta } from "@/lib/actions";
 import { calcularProgresoCompra, montoPorCuota } from "@/lib/cuotas";
@@ -34,6 +35,20 @@ export default function TarjetasPage() {
     tarjetas?.find((t) => t.id === id)?.nombre ?? "Tarjeta";
   const monedaTarjeta = (id: number) =>
     tarjetas?.find((t) => t.id === id)?.moneda ?? "ARS";
+
+  const proximoPeriodo = periodoActual(addMonths(new Date(), 1));
+  const totalProximoPorMoneda = (tarjetas ?? []).reduce<Record<string, number>>(
+    (acc, t) => {
+      if (t.id == null) return acc;
+      const deuda = deudas?.find(
+        (d) => d.tarjeta_id === t.id && d.periodo === proximoPeriodo,
+      );
+      const pendiente = deuda ? deuda.monto_total - deuda.monto_pagado : 0;
+      acc[t.moneda] = (acc[t.moneda] ?? 0) + pendiente;
+      return acc;
+    },
+    {},
+  );
 
   return (
     <div className="flex flex-col gap-8">
@@ -74,6 +89,59 @@ export default function TarjetasPage() {
               </Card>
             ))}
           </div>
+        )}
+      </section>
+
+      <section>
+        <SectionTitle>Próximo mes a pagar</SectionTitle>
+        <p className="mb-3 text-xs text-zinc-500">
+          Lo que ya está comprometido en cuotas para el período{" "}
+          {proximoPeriodo}, tarjeta por tarjeta.
+        </p>
+        {tarjetas === undefined || deudas === undefined ? (
+          <p className="text-sm text-zinc-500">Cargando…</p>
+        ) : tarjetas.length === 0 ? (
+          <EmptyState>Primero creá una tarjeta.</EmptyState>
+        ) : (
+          <Card className="flex flex-col gap-3">
+            <div className="flex flex-col divide-y divide-zinc-800">
+              {tarjetas.map((t) => {
+                const deuda = deudas.find(
+                  (d) => d.tarjeta_id === t.id && d.periodo === proximoPeriodo,
+                );
+                const pendiente = deuda ? deuda.monto_total - deuda.monto_pagado : 0;
+                return (
+                  <div
+                    key={t.id}
+                    className="flex items-center justify-between py-2 text-sm"
+                  >
+                    <span className="flex items-center gap-2 text-zinc-300">
+                      <CalendarClock size={14} className="text-zinc-500" />
+                      {t.nombre}
+                    </span>
+                    <span className="tabular-nums text-zinc-100">
+                      {formatMoneda(pendiente, t.moneda)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-zinc-800 pt-3 text-sm">
+              <span className="text-zinc-500">Total {proximoPeriodo}:</span>
+              {Object.keys(totalProximoPorMoneda).length === 0 ? (
+                <span className="font-semibold text-zinc-400">$0</span>
+              ) : (
+                Object.entries(totalProximoPorMoneda).map(([moneda, total]) => (
+                  <span
+                    key={moneda}
+                    className="font-semibold tabular-nums text-zinc-50"
+                  >
+                    {formatMoneda(total, moneda as Moneda)}
+                  </span>
+                ))
+              )}
+            </div>
+          </Card>
         )}
       </section>
 

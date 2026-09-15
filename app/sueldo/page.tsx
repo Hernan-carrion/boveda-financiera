@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ChevronLeft, ChevronRight, Wallet } from "lucide-react";
+import { ChevronLeft, ChevronRight, Wallet, Percent, Briefcase } from "lucide-react";
 import { bovedaDB } from "@/lib/db";
+import { CATEGORIA_COMISION, CATEGORIA_TRABAJO_INDEPENDIENTE } from "@/lib/categorizer";
 import { getTarifasTurno } from "@/lib/config";
 import { monthKey, formatMonthLabel } from "@/lib/historical";
 import {
@@ -17,6 +18,7 @@ import {
 import { marcarDiaTrabajado } from "@/lib/actions";
 import { formatMoneda, cn } from "@/lib/utils";
 import { Card, SectionTitle } from "@/components/ui";
+import IngresoExtraButton from "@/components/IngresoExtraButton";
 
 const NOMBRES_DIA = ["D", "L", "M", "M", "J", "V", "S"];
 
@@ -35,11 +37,33 @@ export default function SueldoPage() {
     () => bovedaDB.dias_trabajados.toArray(),
     [],
   );
+  const cuentaMercadoPago = useLiveQuery(
+    () => bovedaDB.cuentas.where("nombre").equals("Mercado Pago").first(),
+    [],
+  );
+  const movimientosExtra = useLiveQuery(
+    () =>
+      bovedaDB.transacciones
+        .where("categoria")
+        .anyOf([CATEGORIA_COMISION, CATEGORIA_TRABAJO_INDEPENDIENTE])
+        .toArray(),
+    [],
+  );
 
   const prefijoMes = `${mes.year}-${String(mes.month + 1).padStart(2, "0")}`;
   const diasDelMesActual = (diasTrabajados ?? []).filter((d) =>
     d.fecha.startsWith(prefijoMes),
   );
+  const extraDelMesActual = (movimientosExtra ?? []).filter(
+    (t) => !t.eliminado && t.fecha.startsWith(prefijoMes),
+  );
+  const monedaMercadoPago = cuentaMercadoPago?.moneda ?? "ARS";
+  const totalComisiones = extraDelMesActual
+    .filter((t) => t.categoria === CATEGORIA_COMISION)
+    .reduce((s, t) => s + t.monto, 0);
+  const totalTrabajoIndependiente = extraDelMesActual
+    .filter((t) => t.categoria === CATEGORIA_TRABAJO_INDEPENDIENTE)
+    .reduce((s, t) => s + t.monto, 0);
 
 
   const estimacion = tarifas ? estimarSueldoMensual(mes, tarifas) : null;
@@ -180,6 +204,45 @@ export default function SueldoPage() {
             </p>
           </div>
         </Card>
+      </section>
+
+      <section>
+        <SectionTitle>Otros ingresos</SectionTitle>
+        <p className="mb-3 text-xs text-zinc-500">
+          Comisiones y trabajos independientes — plata real que entra a
+          Mercado Pago, además del sueldo. El monto se carga a mano cada vez
+          porque varía.
+        </p>
+        <Card className="flex flex-col gap-3">
+          <IngresoExtraButton
+            categoria={CATEGORIA_COMISION}
+            label="Cobrar comisión"
+            Icon={Percent}
+          />
+          <IngresoExtraButton
+            categoria={CATEGORIA_TRABAJO_INDEPENDIENTE}
+            label="Cobrar trabajo independiente"
+            Icon={Briefcase}
+          />
+        </Card>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-zinc-500">
+              Comisiones este mes
+            </p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-50">
+              {formatMoneda(totalComisiones, monedaMercadoPago)}
+            </p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-zinc-500">
+              Trabajos independientes este mes
+            </p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-50">
+              {formatMoneda(totalTrabajoIndependiente, monedaMercadoPago)}
+            </p>
+          </Card>
+        </div>
       </section>
     </div>
   );

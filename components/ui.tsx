@@ -20,7 +20,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-zinc-800 bg-zinc-900/50 p-5",
+        "rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 shadow-sm shadow-black/20 transition-colors hover:border-zinc-700/80",
         className,
       )}
     >
@@ -31,7 +31,8 @@ export function Card({
 
 export function SectionTitle({ children }: { children: ReactNode }) {
   return (
-    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+    <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+      <span className="h-3 w-0.5 rounded-full bg-emerald-500/70" aria-hidden />
       {children}
     </h2>
   );

@@ -231,4 +231,21 @@ export const CATEGORIAS_EGRESO = [
   "Sin categoría",
 ];
 
+/**
+ * Clasificación de las categorías de egreso para la regla 50/30/20
+ * ("Salud financiera" del dashboard): necesidades (lo indispensable) vs.
+ * deseos (lo prescindible). El ahorro no es una categoría de gasto — sale
+ * de lo que queda del ingreso una vez descontadas ambas.
+ */
+export const CATEGORIAS_NECESIDAD = [
+  "Comida",
+  "Vehículo",
+  "Moto",
+  "Herramientas/Trabajo",
+  "Suscripciones",
+  "Tarjetas",
+  "Sin categoría",
+];
+export const CATEGORIAS_DESEO = ["Deporte/Ocio", "Salidas"];
+
 export default procesarTextoGasto;

@@ -1,6 +1,10 @@
 import { startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import type { Transaccion, Prestamo, Moneda } from "./db";
-import { CATEGORIA_CAMBIO_DIVISA } from "./categorizer";
+import {
+  CATEGORIA_CAMBIO_DIVISA,
+  CATEGORIAS_NECESIDAD,
+  CATEGORIAS_DESEO,
+} from "./categorizer";
 
 /**
  * Funciones puras de agregación para el dashboard de métricas.
@@ -103,6 +107,61 @@ export function getExpenseToIncomeRatio(
     return egresos > 0 ? 100 : 0;
   }
   return (egresos / ingresos) * 100;
+}
+
+export interface SaludFinanciera {
+  ingresos: number;
+  necesidades: number;
+  deseos: number;
+  ahorro: number;
+  /** % del ingreso del mes, siempre suman 100 (ahorro puede ser negativo). */
+  pctNecesidades: number;
+  pctDeseos: number;
+  pctAhorro: number;
+}
+
+const SET_NECESIDAD = new Set<string>(CATEGORIAS_NECESIDAD);
+const SET_DESEO = new Set<string>(CATEGORIAS_DESEO);
+
+/**
+ * Regla 50/30/20: clasifica los egresos netos del mes en necesidades y
+ * deseos (ver `CATEGORIAS_NECESIDAD`/`CATEGORIAS_DESEO`), y el ahorro es lo
+ * que queda del ingreso una vez descontados ambos — no una categoría de
+ * gasto, así que puede dar negativo si el mes se gastó de más.
+ */
+export function getSaludFinanciera(
+  transacciones: Transaccion[],
+  moneda: Moneda = "ARS",
+  ref: Date = new Date(),
+): SaludFinanciera {
+  const delMes = transacciones.filter(
+    (t) => t.moneda === moneda && fechaEnMes(t.fecha, ref),
+  );
+
+  const ingresos = delMes
+    .filter(ES_INGRESO)
+    .reduce((sum, t) => sum + (t.monto || 0), 0);
+
+  const egresos = delMes.filter(ES_EGRESO);
+  const necesidades = egresos
+    .filter((t) => SET_NECESIDAD.has(t.categoria))
+    .reduce((sum, t) => sum + (t.monto || 0), 0);
+  const deseos = egresos
+    .filter((t) => SET_DESEO.has(t.categoria))
+    .reduce((sum, t) => sum + (t.monto || 0), 0);
+  const ahorro = ingresos - necesidades - deseos;
+
+  const pct = (n: number) => (ingresos > 0 ? (n / ingresos) * 100 : 0);
+
+  return {
+    ingresos,
+    necesidades,
+    deseos,
+    ahorro,
+    pctNecesidades: pct(necesidades),
+    pctDeseos: pct(deseos),
+    pctAhorro: pct(ahorro),
+  };
 }
 
 /**

@@ -36,3 +36,21 @@ body {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
+
+/* Dial de la bóveda: anillo concéntrico decorativo del hero del dashboard. */
+@keyframes vault-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.vault-dial {
+  animation: vault-spin 120s linear infinite;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vault-dial {
+    animation: none;
+  }
+}

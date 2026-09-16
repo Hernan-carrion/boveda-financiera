@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Plus, Repeat, Trash2, Play } from "lucide-react";
+import { Plus, Repeat, Pencil, Play } from "lucide-react";
 import { toast } from "sonner";
-import { bovedaDB, type Moneda } from "@/lib/db";
+import { bovedaDB, type Moneda, type Suscripcion } from "@/lib/db";
 import { CATEGORIAS_EGRESO } from "@/lib/categorizer";
 import { procesarSuscripcionesVencidas } from "@/lib/actions";
 import { formatMoneda, periodoActual } from "@/lib/utils";
+import EditarSuscripcionModal from "@/components/EditarSuscripcionModal";
 import {
   Card,
   SectionTitle,
@@ -20,11 +21,12 @@ import {
 
 export default function SuscripcionesPage() {
   const suscripciones = useLiveQuery(
-    () => bovedaDB.suscripciones.toArray(),
+    () => bovedaDB.suscripciones.filter((s) => !s.eliminado).toArray(),
     [],
   );
   const cuentas = useLiveQuery(() => bovedaDB.cuentas.toArray(), []);
   const periodo = periodoActual();
+  const [editando, setEditando] = useState<Suscripcion | null>(null);
 
   async function procesarAhora() {
     const cobradas = await procesarSuscripcionesVencidas();
@@ -101,13 +103,11 @@ export default function SuscripcionesPage() {
                   </label>
                   <button
                     type="button"
-                    onClick={() =>
-                      s.id != null && bovedaDB.suscripciones.delete(s.id)
-                    }
-                    className="text-zinc-600 transition-colors hover:text-red-400"
-                    aria-label="Borrar suscripción"
+                    onClick={() => setEditando(s)}
+                    className="text-zinc-600 transition-colors hover:text-zinc-200"
+                    aria-label="Editar suscripción"
                   >
-                    <Trash2 size={15} />
+                    <Pencil size={15} />
                   </button>
                 </Card>
               );
@@ -122,6 +122,12 @@ export default function SuscripcionesPage() {
           cuentas={cuentas ?? []}
         />
       </section>
+
+      <EditarSuscripcionModal
+        sus={editando}
+        cuentas={cuentas ?? []}
+        onClose={() => setEditando(null)}
+      />
     </div>
   );
 }

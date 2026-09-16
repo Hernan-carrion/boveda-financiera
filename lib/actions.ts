@@ -202,7 +202,7 @@ export async function procesarSuscripcionesVencidas(
   const cobradas: string[] = [];
 
   const activas = await bovedaDB.suscripciones
-    .filter((s) => s.activa === true)
+    .filter((s) => s.activa === true && !s.eliminado)
     .toArray();
 
   for (const sus of activas) {
@@ -259,7 +259,7 @@ export async function avisarSuscripcionesProximas(
   const periodo = periodoActual(enDosDias);
 
   const activas = await bovedaDB.suscripciones
-    .filter((s) => s.activa === true)
+    .filter((s) => s.activa === true && !s.eliminado)
     .toArray();
 
   const proximas: Suscripcion[] = [];
@@ -277,6 +277,37 @@ export async function avisarSuscripcionesProximas(
   }
 
   return proximas;
+}
+
+export interface CambiosSuscripcion {
+  descripcion?: string;
+  monto?: number;
+  moneda?: Moneda;
+  categoria?: string;
+  cuenta_id?: number;
+  dia_cobro?: number;
+  activa?: boolean;
+}
+
+/** Edita cualquier campo de una suscripción ya cargada. */
+export async function actualizarSuscripcion(id: number, cambios: CambiosSuscripcion) {
+  await bovedaDB.suscripciones.update(id, {
+    ...cambios,
+    last_updated: new Date().toISOString(),
+  });
+}
+
+/**
+ * "Borra" una suscripción: borrado lógico (ver el comentario en `lib/db.ts`
+ * sobre `Suscripcion.eliminado`) — no cobra nada retroactivo, sólo deja de
+ * generar cobros futuros y desaparece de la lista.
+ */
+export async function borrarSuscripcion(id: number) {
+  await bovedaDB.suscripciones.update(id, {
+    eliminado: true,
+    activa: false,
+    last_updated: new Date().toISOString(),
+  });
 }
 
 /* -------------------------- Sueldo -------------------------- */

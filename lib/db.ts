@@ -149,6 +149,12 @@ export interface Suscripcion extends Sincronizable {
   ultimo_cobro_periodo?: string;
   /** Último período "yyyy-MM" en el que ya se avisó "se cobra en 2 días". */
   ultimo_aviso_periodo?: string;
+  /**
+   * Borrado lógico (mismo motivo que `Transaccion.eliminado`): un borrado
+   * físico no se puede "subir" con upsert y un dispositivo desactualizado
+   * podría resucitarla en el próximo sync.
+   */
+  eliminado?: boolean;
 }
 
 /** Objetivo de ahorro (Ej: "Moto 150cc", "Llantas Golf"). */
@@ -292,6 +298,15 @@ bovedaDB.version(6).stores({
  */
 bovedaDB.version(7).stores({
   dias_trabajados: "++id, &fecha, turno, last_updated",
+});
+
+/**
+ * v8 — borrado lógico de suscripciones (`eliminado`), mismo motivo que el
+ * de transacciones (v6): editar/eliminar sin romper la sincronización.
+ */
+bovedaDB.version(8).stores({
+  suscripciones:
+    "++id, descripcion, categoria, cuenta_id, dia_cobro, activa, eliminado, last_updated",
 });
 
 /**

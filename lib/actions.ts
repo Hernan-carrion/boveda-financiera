@@ -193,6 +193,15 @@ export async function reiniciarMovimientos() {
  * curso y todavía no se generó el cobro de este período, inserta la
  * transacción de egreso y descuenta el saldo de la cuenta.
  * Devuelve las descripciones cobradas para poder notificar con `sonner`.
+ *
+ * Segura ante llamadas superpuestas (dos pestañas abiertas, el doble-render
+ * de efectos de React en desarrollo, dos taps seguidos en "Procesar
+ * cobros"): el chequeo de "¿ya se cobró este período?" se hace DENTRO de la
+ * misma transacción que el cobro, releyendo la suscripción en ese momento en
+ * vez de confiar en la lista leída al principio — Dexie serializa las
+ * transacciones que tocan las mismas tablas, así que la segunda llamada ve
+ * ahí el `ultimo_cobro_periodo` que acaba de dejar la primera y no duplica
+ * el cobro.
  */
 export async function procesarSuscripcionesVencidas(
   hoy: Date = new Date(),
@@ -207,37 +216,47 @@ export async function procesarSuscripcionesVencidas(
 
   for (const sus of activas) {
     if (sus.id == null) continue;
-    if (sus.ultimo_cobro_periodo === periodo) continue;
     if (diaHoy < sus.dia_cobro) continue;
 
-    await bovedaDB.transaction(
+    const seCobro = await bovedaDB.transaction(
       "rw",
       bovedaDB.suscripciones,
       bovedaDB.cuentas,
       bovedaDB.transacciones,
       async () => {
-        const cuenta = await bovedaDB.cuentas.get(sus.cuenta_id);
+        const actual = await bovedaDB.suscripciones.get(sus.id!);
+        if (
+          !actual ||
+          actual.eliminado ||
+          !actual.activa ||
+          actual.ultimo_cobro_periodo === periodo
+        ) {
+          return false;
+        }
+
+        const cuenta = await bovedaDB.cuentas.get(actual.cuenta_id);
         if (cuenta && cuenta.id != null) {
           await bovedaDB.cuentas.update(cuenta.id, {
-            saldo: cuenta.saldo - Math.abs(sus.monto),
+            saldo: cuenta.saldo - Math.abs(actual.monto),
           });
         }
         await bovedaDB.transacciones.add({
-          cuenta_id: sus.cuenta_id,
+          cuenta_id: actual.cuenta_id,
           tipo: "egreso",
-          monto: Math.abs(sus.monto),
-          moneda: sus.moneda,
-          categoria: sus.categoria || "Suscripciones",
-          descripcion: `Suscripción: ${sus.descripcion}`,
+          monto: Math.abs(actual.monto),
+          moneda: actual.moneda,
+          categoria: actual.categoria || "Suscripciones",
+          descripcion: `Suscripción: ${actual.descripcion}`,
           fecha: hoy.toISOString(),
         });
-        await bovedaDB.suscripciones.update(sus.id!, {
+        await bovedaDB.suscripciones.update(actual.id!, {
           ultimo_cobro_periodo: periodo,
           last_updated: new Date().toISOString(),
         });
+        return true;
       },
     );
-    cobradas.push(sus.descripcion);
+    if (seCobro) cobradas.push(sus.descripcion);
   }
 
   return cobradas;
@@ -266,14 +285,32 @@ export async function avisarSuscripcionesProximas(
   for (const sus of activas) {
     if (sus.id == null) continue;
     if (sus.dia_cobro !== diaObjetivo) continue;
-    if (sus.ultimo_cobro_periodo === periodo) continue;
-    if (sus.ultimo_aviso_periodo === periodo) continue;
 
-    await bovedaDB.suscripciones.update(sus.id, {
-      ultimo_aviso_periodo: periodo,
-      last_updated: new Date().toISOString(),
-    });
-    proximas.push(sus);
+    // Igual que en procesarSuscripcionesVencidas: relee y marca dentro de
+    // una transacción para no duplicar el aviso si esta función se llama
+    // superpuesta (dos pestañas, doble-render de efectos en desarrollo).
+    const avisar = await bovedaDB.transaction(
+      "rw",
+      bovedaDB.suscripciones,
+      async () => {
+        const actual = await bovedaDB.suscripciones.get(sus.id!);
+        if (
+          !actual ||
+          actual.eliminado ||
+          !actual.activa ||
+          actual.ultimo_cobro_periodo === periodo ||
+          actual.ultimo_aviso_periodo === periodo
+        ) {
+          return false;
+        }
+        await bovedaDB.suscripciones.update(actual.id!, {
+          ultimo_aviso_periodo: periodo,
+          last_updated: new Date().toISOString(),
+        });
+        return true;
+      },
+    );
+    if (avisar) proximas.push(sus);
   }
 
   return proximas;

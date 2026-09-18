@@ -3,53 +3,68 @@
 import { useEffect } from "react";
 import { Toaster, toast } from "sonner";
 import { avisarSuscripcionesProximas, procesarSuscripcionesVencidas } from "@/lib/actions";
-import { startAutoSync } from "@/lib/syncService";
+import { startAutoSync, pullFromCloud } from "@/lib/syncService";
 import { supabaseEnabled } from "@/lib/supabase";
 import { formatMoneda } from "@/lib/utils";
 
 /**
  * Inicialización de la app en el cliente:
+ *  - Si hay sync, espera el pull inicial ANTES de tocar nada local — si se
+ *    dispara en paralelo, el `bulkPut` del pull puede pisar con el estado
+ *    viejo de la nube una escritura local recién hecha (ver el comentario en
+ *    `lib/syncService.ts::startAutoSync`), y eso hacía que una suscripción
+ *    vencida se cobrara de nuevo en cada apertura de la app y que el
+ *    descuento del saldo no quedara reflejado en el patrimonio.
  *  - Cobra las suscripciones vencidas del mes y avisa con un toast.
  *  - Avisa (sin cobrar) las suscripciones que se cobran en 2 días.
- *  - Arranca la sincronización automática con la nube (pull + realtime + cola
- *    offline + auto-push en tiempo real de cada cambio local) si Supabase
- *    está configurado.
+ *  - Recién ahí arranca el resto de la sincronización automática (realtime +
+ *    cola offline + auto-push en tiempo real de cada cambio local).
  * Se monta una sola vez desde el layout raíz.
  */
 export default function AppInit() {
   useEffect(() => {
     let cancelado = false;
-
-    procesarSuscripcionesVencidas()
-      .then((cobradas) => {
-        if (cancelado || cobradas.length === 0) return;
-        toast.success(
-          cobradas.length === 1
-            ? `Se registró la suscripción "${cobradas[0]}"`
-            : `Se registraron ${cobradas.length} suscripciones del mes`,
-          { description: cobradas.join(" · ") },
-        );
-      })
-      .catch(() => {
-        /* no bloquea la carga de la app */
-      });
-
-    avisarSuscripcionesProximas()
-      .then((proximas) => {
-        if (cancelado || proximas.length === 0) return;
-        proximas.forEach((s) => {
-          toast(`"${s.descripcion}" se cobra en 2 días`, {
-            description: formatMoneda(s.monto, s.moneda),
-            icon: "⏰",
-          });
-        });
-      })
-      .catch(() => {
-        /* no bloquea la carga de la app */
-      });
-
     let limpiar: (() => void) | undefined;
-    if (supabaseEnabled) {
+
+    async function init() {
+      if (supabaseEnabled) {
+        try {
+          await pullFromCloud();
+        } catch {
+          /* sin conexión o sin configurar — seguimos con lo local */
+        }
+        if (cancelado) return;
+      }
+
+      try {
+        const cobradas = await procesarSuscripcionesVencidas();
+        if (!cancelado && cobradas.length > 0) {
+          toast.success(
+            cobradas.length === 1
+              ? `Se registró la suscripción "${cobradas[0]}"`
+              : `Se registraron ${cobradas.length} suscripciones del mes`,
+            { description: cobradas.join(" · ") },
+          );
+        }
+      } catch {
+        /* no bloquea la carga de la app */
+      }
+
+      try {
+        const proximas = await avisarSuscripcionesProximas();
+        if (!cancelado) {
+          proximas.forEach((s) => {
+            toast(`"${s.descripcion}" se cobra en 2 días`, {
+              description: formatMoneda(s.monto, s.moneda),
+              icon: "⏰",
+            });
+          });
+        }
+      } catch {
+        /* no bloquea la carga de la app */
+      }
+
+      if (cancelado || !supabaseEnabled) return;
       limpiar = startAutoSync(
         () => {
           if (!cancelado) toast("Datos sincronizados desde la nube");
@@ -66,6 +81,8 @@ export default function AppInit() {
         },
       );
     }
+
+    void init();
 
     return () => {
       cancelado = true;

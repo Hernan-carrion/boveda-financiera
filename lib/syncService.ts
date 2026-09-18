@@ -220,14 +220,22 @@ let canalRealtime: ReturnType<NonNullable<typeof supabase>["channel"]> | null =
 
 /**
  * Arranca la sincronización automática:
- *  1. Pull inicial desde la nube.
- *  2. Reintento de la cola offline pendiente.
- *  3. Listener `online` para vaciar la cola cuando vuelve la red.
- *  4. Suscripción realtime (WebSocket) a cambios remotos → pull + callback.
- *  5. Auto-push en tiempo real: cualquier escritura local (de cualquier
+ *  1. Reintento de la cola offline pendiente.
+ *  2. Listener `online` para vaciar la cola cuando vuelve la red.
+ *  3. Suscripción realtime (WebSocket) a cambios remotos → pull + callback.
+ *  4. Auto-push en tiempo real: cualquier escritura local (de cualquier
  *     tabla, sea por una acción de `lib/actions.ts` o un CRUD directo de una
  *     página) dispara un push a los pocos milisegundos, sin que el usuario
  *     tenga que tocar el botón "Subir a la nube".
+ *
+ * OJO: a propósito NO hace un pull inicial acá — eso le toca al que llama,
+ * y tiene que esperarlo (`await pullFromCloud()`) ANTES de generar cualquier
+ * escritura local propia (ej. cobrar una suscripción vencida al abrir la
+ * app). Si el pull inicial corriera en paralelo con esa escritura, `bulkPut`
+ * puede pisarla con el estado viejo de la nube antes de que el auto-push
+ * llegue a subirla — eso hacía que una suscripción se cobrara de nuevo en
+ * cada apertura de la app (el `ultimo_cobro_periodo` volvía atrás) y que el
+ * descuento del saldo de la cuenta desapareciera del patrimonio.
  *
  * Es idempotente: llamarla varias veces no duplica listeners.
  */
@@ -242,19 +250,16 @@ export function startAutoSync(
 
   const cliente = supabase;
 
-  // 1 + 2: pull inicial y drenaje de cola
-  void pullFromCloud().then((r) => {
-    if (r.ok) onRemoteChange?.();
-  });
+  // 1: drenaje de la cola offline pendiente de una sesión anterior
   if (hayPushPendiente()) void pushConCola();
 
-  // 3: al recuperar conexión, subir lo pendiente
+  // 2: al recuperar conexión, subir lo pendiente
   const alVolverOnline = () => {
     if (hayPushPendiente()) void pushConCola();
   };
   window.addEventListener("online", alVolverOnline);
 
-  // 4: realtime — cualquier cambio remoto dispara un pull
+  // 3: realtime — cualquier cambio remoto dispara un pull
   let pullPendiente: ReturnType<typeof setTimeout> | null = null;
   const programarPull = () => {
     if (pullPendiente) clearTimeout(pullPendiente);
@@ -275,7 +280,7 @@ export function startAutoSync(
   }
   canalRealtime.subscribe();
 
-  // 5: auto-push — cualquier escritura local dispara un push (con un
+  // 4: auto-push — cualquier escritura local dispara un push (con un
   // pequeño debounce para agrupar ráfagas de escrituras, ej. cargar varios
   // movimientos seguidos, sin pisar la cola offline si estamos sin red).
   let autoPushPendiente: ReturnType<typeof setTimeout> | null = null;

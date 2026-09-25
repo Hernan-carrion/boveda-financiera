@@ -52,15 +52,15 @@ const jetbrainsMono = JetBrains_Mono({
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 export const metadata: Metadata = {
-  title: "🏦 Bóveda Financiera",
+  title: "👣 Huella",
   description:
     "Gestión de finanzas personales 100% local: cuentas, tarjetas y préstamos, multimoneda y offline.",
   manifest: `${BASE}/manifest.json`,
-  applicationName: "Bóveda",
+  applicationName: "Huella",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Bóveda",
+    title: "Huella",
   },
   icons: {
     icon: [
@@ -117,10 +117,10 @@ export default function RootLayout({
               className="font-display text-lg font-bold tracking-tight"
             >
               <span aria-hidden className="mr-1">
-                🏦
+                👣
               </span>
               <span className="bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
-                Bóveda
+                Huella
               </span>
             </Link>
             <div className="flex flex-wrap gap-4 text-sm text-zinc-400">
@@ -142,7 +142,7 @@ export default function RootLayout({
           {children}
         </main>
         <footer className="border-t border-zinc-800 px-4 py-4 text-center text-xs text-zinc-600">
-          Bóveda Financiera · datos guardados sólo en este dispositivo (IndexedDB)
+          Huella · datos guardados sólo en este dispositivo (IndexedDB)
         </footer>
         <ServiceWorkerRegister />
         <AppInit />

@@ -1,6 +1,6 @@
 {
-  "name": "Bóveda Financiera",
-  "short_name": "Bóveda",
+  "name": "Huella",
+  "short_name": "Huella",
   "description": "Gestión de finanzas personales 100% local: cuentas, tarjetas, préstamos y metas, multimoneda y offline.",
   "id": "./",
   "start_url": ".",

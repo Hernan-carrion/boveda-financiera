@@ -664,6 +664,44 @@ export async function borrarNota(id: number) {
   await bovedaDB.notas.update(id, { eliminado: true, last_updated: new Date().toISOString() });
 }
 
+/* -------------------------- Vida: hábitos -------------------------- */
+
+export async function crearHabito(params: { nombre: string; color_hex?: string }) {
+  if (!params.nombre.trim()) throw new Error("El nombre no puede estar vacío.");
+  return bovedaDB.habitos.add({
+    nombre: params.nombre.trim(),
+    color_hex: params.color_hex || "#a78bfa",
+    activo: true,
+    last_updated: new Date().toISOString(),
+  });
+}
+
+export async function borrarHabito(id: number) {
+  await bovedaDB.habitos.update(id, {
+    eliminado: true,
+    activo: false,
+    last_updated: new Date().toISOString(),
+  });
+}
+
+/**
+ * Marca (o desmarca) un hábito para un día puntual — upsert por
+ * (habito_id, fecha), nunca un delete (mismo motivo que en toda la app:
+ * un borrado físico no se puede sincronizar con un upsert normal).
+ */
+export async function marcarHabito(habito_id: number, fecha: string, hecho: boolean) {
+  const ahora = new Date().toISOString();
+  const existente = await bovedaDB.habito_registros
+    .where("[habito_id+fecha]")
+    .equals([habito_id, fecha])
+    .first();
+  if (existente && existente.id != null) {
+    await bovedaDB.habito_registros.update(existente.id, { hecho, last_updated: ahora });
+  } else {
+    await bovedaDB.habito_registros.add({ habito_id, fecha, hecho, last_updated: ahora });
+  }
+}
+
 /* -------------------------- Exportación CSV -------------------------- */
 
 /** Escapa un valor para CSV (comillas dobles + separador coma). */
@@ -1075,6 +1113,8 @@ export interface BackupBoveda {
     tareas?: unknown[];
     recordatorios?: unknown[];
     notas?: unknown[];
+    habitos?: unknown[];
+    habito_registros?: unknown[];
   };
 }
 
@@ -1096,6 +1136,8 @@ export async function exportarJSON(): Promise<BackupBoveda> {
     tareas,
     recordatorios,
     notas,
+    habitos,
+    habito_registros,
   ] = await Promise.all([
     bovedaDB.cuentas.toArray(),
     bovedaDB.transacciones.toArray(),
@@ -1113,11 +1155,13 @@ export async function exportarJSON(): Promise<BackupBoveda> {
     bovedaDB.tareas.toArray(),
     bovedaDB.recordatorios.toArray(),
     bovedaDB.notas.toArray(),
+    bovedaDB.habitos.toArray(),
+    bovedaDB.habito_registros.toArray(),
   ]);
 
   return {
     __app: "boveda-financiera",
-    version: 9,
+    version: 10,
     exportadoEn: new Date().toISOString(),
     data: {
       cuentas,
@@ -1136,6 +1180,8 @@ export async function exportarJSON(): Promise<BackupBoveda> {
       tareas,
       recordatorios,
       notas,
+      habitos,
+      habito_registros,
     },
   };
 }
@@ -1164,6 +1210,8 @@ export async function importarJSON(backup: BackupBoveda) {
       bovedaDB.tareas,
       bovedaDB.recordatorios,
       bovedaDB.notas,
+      bovedaDB.habitos,
+      bovedaDB.habito_registros,
     ],
     async () => {
       await Promise.all([
@@ -1183,6 +1231,8 @@ export async function importarJSON(backup: BackupBoveda) {
         bovedaDB.tareas.clear(),
         bovedaDB.recordatorios.clear(),
         bovedaDB.notas.clear(),
+        bovedaDB.habitos.clear(),
+        bovedaDB.habito_registros.clear(),
       ]);
       await Promise.all([
         bovedaDB.cuentas.bulkAdd(data.cuentas as never),
@@ -1201,6 +1251,8 @@ export async function importarJSON(backup: BackupBoveda) {
         bovedaDB.tareas.bulkAdd((data.tareas ?? []) as never),
         bovedaDB.recordatorios.bulkAdd((data.recordatorios ?? []) as never),
         bovedaDB.notas.bulkAdd((data.notas ?? []) as never),
+        bovedaDB.habitos.bulkAdd((data.habitos ?? []) as never),
+        bovedaDB.habito_registros.bulkAdd((data.habito_registros ?? []) as never),
       ]);
     },
   );

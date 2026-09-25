@@ -27,6 +27,8 @@ const TABLAS = [
   "tareas",
   "recordatorios",
   "notas",
+  "habitos",
+  "habito_registros",
 ] as const;
 
 export type TablaSync = (typeof TABLAS)[number];

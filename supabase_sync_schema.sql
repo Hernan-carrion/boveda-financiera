@@ -201,6 +201,25 @@ create table if not exists public.notas (
   last_updated text
 );
 
+-- ----- "Vida" (Huella, fase 2): hábitos -----
+
+create table if not exists public.habitos (
+  id           bigint primary key,
+  nombre       text,
+  color_hex    text,
+  activo       boolean default true,
+  eliminado    boolean default false,
+  last_updated text
+);
+
+create table if not exists public.habito_registros (
+  id           bigint primary key,
+  habito_id    bigint,
+  fecha        text,
+  hecho        boolean default false,
+  last_updated text
+);
+
 -- ============================================================================
 --  SEGURIDAD (RLS) — REQUERIDO para que el sync pueda escribir
 -- ----------------------------------------------------------------------------
@@ -220,7 +239,8 @@ begin
                            'deudas_tarjetas','inversiones','prestamos',
                            'presupuestos','suscripciones','metas_ahorro',
                            'configuracion','compras_tarjeta','dias_trabajados',
-                           'proyectos','tareas','recordatorios','notas']
+                           'proyectos','tareas','recordatorios','notas',
+                           'habitos','habito_registros']
   loop
     execute format('alter table public.%I enable row level security;', t);
     execute format('drop policy if exists "boveda_rw" on public.%I;', t);

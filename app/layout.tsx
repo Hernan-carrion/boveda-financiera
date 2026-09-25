@@ -16,6 +16,9 @@ import {
   Receipt,
   CalendarCheck,
   ListFilter,
+  CheckSquare,
+  Bell,
+  StickyNote,
 } from "lucide-react";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
@@ -83,6 +86,9 @@ export const viewport: Viewport = {
 
 const navLinks = [
   { href: "/", label: "Dashboard", Icon: Wallet },
+  { href: "/tareas", label: "Tareas", Icon: CheckSquare },
+  { href: "/recordatorios", label: "Recordatorios", Icon: Bell },
+  { href: "/notas", label: "Notas", Icon: StickyNote },
   { href: "/movimientos", label: "Movimientos", Icon: ListFilter },
   { href: "/presupuestos", label: "Presupuestos", Icon: Target },
   { href: "/metas", label: "Metas", Icon: PiggyBank },

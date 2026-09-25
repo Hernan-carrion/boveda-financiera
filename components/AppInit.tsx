@@ -2,7 +2,11 @@
 
 import { useEffect } from "react";
 import { Toaster, toast } from "sonner";
-import { avisarSuscripcionesProximas, procesarSuscripcionesVencidas } from "@/lib/actions";
+import {
+  avisarSuscripcionesProximas,
+  avisarRecordatoriosProximos,
+  procesarSuscripcionesVencidas,
+} from "@/lib/actions";
 import { startAutoSync, pullFromCloud } from "@/lib/syncService";
 import { supabaseEnabled } from "@/lib/supabase";
 import { formatMoneda } from "@/lib/utils";
@@ -17,6 +21,7 @@ import { formatMoneda } from "@/lib/utils";
  *    descuento del saldo no quedara reflejado en el patrimonio.
  *  - Cobra las suscripciones vencidas del mes y avisa con un toast.
  *  - Avisa (sin cobrar) las suscripciones que se cobran en 2 días.
+ *  - Avisa los recordatorios próximos (turnos, vencimientos de documentos…).
  *  - Recién ahí arranca el resto de la sincronización automática (realtime +
  *    cola offline + auto-push en tiempo real de cada cambio local).
  * Se monta una sola vez desde el layout raíz.
@@ -57,6 +62,19 @@ export default function AppInit() {
             toast(`"${s.descripcion}" se cobra en 2 días`, {
               description: formatMoneda(s.monto, s.moneda),
               icon: "⏰",
+            });
+          });
+        }
+      } catch {
+        /* no bloquea la carga de la app */
+      }
+
+      try {
+        const proximosRecordatorios = await avisarRecordatoriosProximos();
+        if (!cancelado) {
+          proximosRecordatorios.forEach((r) => {
+            toast(`"${r.titulo}" ${r.dias === 0 ? "es hoy" : `en ${r.dias} día${r.dias === 1 ? "" : "s"}`}`, {
+              icon: "🔔",
             });
           });
         }

@@ -1,7 +1,10 @@
 import {
   bovedaDB,
   type EstadoDeuda,
+  type EstadoTarea,
   type Moneda,
+  type PrioridadTarea,
+  type RepeticionRecordatorio,
   type Suscripcion,
   type TipoPrestamo,
   type TipoTransaccion,
@@ -16,6 +19,7 @@ import {
 import { periodoActual } from "./utils";
 import { calcularCuotas } from "./cuotas";
 import { getTarifasTurno } from "./config";
+import { avanzarSiVencida, diasHasta } from "./recordatorios";
 
 /**
  * Todas las mutaciones pasan por acá para mantener consistente el saldo de
@@ -456,6 +460,210 @@ export async function marcarDiaTrabajado(
   }
 }
 
+/* -------------------------- Vida: proyectos y tareas -------------------------- */
+
+export async function crearProyecto(params: {
+  nombre: string;
+  descripcion?: string;
+  color_hex?: string;
+}) {
+  if (!params.nombre.trim()) throw new Error("El nombre no puede estar vacío.");
+  return bovedaDB.proyectos.add({
+    nombre: params.nombre.trim(),
+    descripcion: params.descripcion?.trim() || undefined,
+    color_hex: params.color_hex || "#34d399",
+    estado: "activo",
+    last_updated: new Date().toISOString(),
+  });
+}
+
+/** Borrado lógico — las tareas que lo referencian quedan igual, sólo se ocultan de la lista de proyectos activos. */
+export async function borrarProyecto(id: number) {
+  await bovedaDB.proyectos.update(id, {
+    eliminado: true,
+    estado: "archivado",
+    last_updated: new Date().toISOString(),
+  });
+}
+
+export interface CambiosTarea {
+  titulo?: string;
+  descripcion?: string;
+  fecha_vencimiento?: string;
+  prioridad?: PrioridadTarea;
+  proyecto_id?: number;
+  estado?: EstadoTarea;
+}
+
+export async function crearTarea(params: {
+  titulo: string;
+  descripcion?: string;
+  fecha_vencimiento?: string;
+  prioridad?: PrioridadTarea;
+  proyecto_id?: number;
+}) {
+  if (!params.titulo.trim()) throw new Error("El título no puede estar vacío.");
+  return bovedaDB.tareas.add({
+    titulo: params.titulo.trim(),
+    descripcion: params.descripcion?.trim() || undefined,
+    fecha_vencimiento: params.fecha_vencimiento || undefined,
+    prioridad: params.prioridad ?? "media",
+    proyecto_id: params.proyecto_id,
+    estado: "pendiente",
+    last_updated: new Date().toISOString(),
+  });
+}
+
+export async function actualizarTarea(id: number, cambios: CambiosTarea) {
+  await bovedaDB.tareas.update(id, { ...cambios, last_updated: new Date().toISOString() });
+}
+
+/** Marca una tarea como hecha, o la vuelve a poner pendiente. */
+export async function completarTarea(id: number, hecha: boolean) {
+  await bovedaDB.tareas.update(id, {
+    estado: hecha ? "hecha" : "pendiente",
+    completada_en: hecha ? new Date().toISOString() : undefined,
+    last_updated: new Date().toISOString(),
+  });
+}
+
+export async function borrarTarea(id: number) {
+  await bovedaDB.tareas.update(id, { eliminado: true, last_updated: new Date().toISOString() });
+}
+
+/* -------------------------- Vida: recordatorios -------------------------- */
+
+export interface CambiosRecordatorio {
+  titulo?: string;
+  categoria?: string;
+  fecha?: string;
+  repetir?: RepeticionRecordatorio;
+  dias_aviso?: number;
+  activo?: boolean;
+}
+
+export async function crearRecordatorio(params: {
+  titulo: string;
+  categoria: string;
+  fecha: string;
+  repetir?: RepeticionRecordatorio;
+  dias_aviso?: number;
+}) {
+  if (!params.titulo.trim()) throw new Error("El título no puede estar vacío.");
+  if (!params.fecha) throw new Error("Elegí una fecha.");
+  return bovedaDB.recordatorios.add({
+    titulo: params.titulo.trim(),
+    categoria: params.categoria || "General",
+    fecha: params.fecha,
+    repetir: params.repetir ?? "ninguna",
+    dias_aviso: params.dias_aviso ?? 2,
+    activo: true,
+    last_updated: new Date().toISOString(),
+  });
+}
+
+export async function actualizarRecordatorio(id: number, cambios: CambiosRecordatorio) {
+  await bovedaDB.recordatorios.update(id, {
+    ...cambios,
+    last_updated: new Date().toISOString(),
+  });
+}
+
+export async function borrarRecordatorio(id: number) {
+  await bovedaDB.recordatorios.update(id, {
+    eliminado: true,
+    activo: false,
+    last_updated: new Date().toISOString(),
+  });
+}
+
+export interface RecordatorioProximo {
+  titulo: string;
+  fecha: string;
+  dias: number;
+}
+
+/**
+ * Recorre los recordatorios activos: si alguno que se repite ya pasó de
+ * fecha, lo empuja a la próxima ocurrencia; y si a alguno le toca avisar
+ * (está a `dias_aviso` días o menos y todavía no se avisó para esa fecha),
+ * lo marca y lo devuelve para poder mostrar un toast.
+ *
+ * Mismo patrón defensivo que `procesarSuscripcionesVencidas`: el chequeo de
+ * "¿ya avisé para esta fecha?" se hace releyendo DENTRO de la transacción,
+ * así dos llamadas superpuestas no duplican el aviso.
+ */
+export async function avisarRecordatoriosProximos(
+  hoy: Date = new Date(),
+): Promise<RecordatorioProximo[]> {
+  const activos = await bovedaDB.recordatorios
+    .filter((r) => r.activo === true && !r.eliminado)
+    .toArray();
+
+  const proximos: RecordatorioProximo[] = [];
+
+  for (const r of activos) {
+    if (r.id == null) continue;
+
+    const resultado = await bovedaDB.transaction(
+      "rw",
+      bovedaDB.recordatorios,
+      async () => {
+        const actual = await bovedaDB.recordatorios.get(r.id!);
+        if (!actual || actual.eliminado || !actual.activo) return null;
+
+        const fechaVigente = avanzarSiVencida(actual.fecha, actual.repetir, hoy);
+        const dias = diasHasta(fechaVigente, hoy);
+        const yaAvisado = actual.ultimo_aviso_fecha === fechaVigente;
+        const corresponde = dias >= 0 && dias <= actual.dias_aviso;
+
+        if (fechaVigente === actual.fecha && (!corresponde || yaAvisado)) {
+          return null;
+        }
+
+        await bovedaDB.recordatorios.update(actual.id!, {
+          fecha: fechaVigente,
+          ultimo_aviso_fecha: corresponde ? fechaVigente : actual.ultimo_aviso_fecha,
+          last_updated: new Date().toISOString(),
+        });
+
+        if (corresponde && !yaAvisado) {
+          return { titulo: actual.titulo, fecha: fechaVigente, dias };
+        }
+        return null;
+      },
+    );
+
+    if (resultado) proximos.push(resultado);
+  }
+
+  return proximos;
+}
+
+/* -------------------------- Vida: notas -------------------------- */
+
+export async function crearNota(texto: string) {
+  if (!texto.trim()) throw new Error("La nota no puede estar vacía.");
+  return bovedaDB.notas.add({
+    texto: texto.trim(),
+    fijada: false,
+    last_updated: new Date().toISOString(),
+  });
+}
+
+export async function actualizarNota(id: number, texto: string) {
+  if (!texto.trim()) throw new Error("La nota no puede estar vacía.");
+  await bovedaDB.notas.update(id, { texto: texto.trim(), last_updated: new Date().toISOString() });
+}
+
+export async function fijarNota(id: number, fijada: boolean) {
+  await bovedaDB.notas.update(id, { fijada, last_updated: new Date().toISOString() });
+}
+
+export async function borrarNota(id: number) {
+  await bovedaDB.notas.update(id, { eliminado: true, last_updated: new Date().toISOString() });
+}
+
 /* -------------------------- Exportación CSV -------------------------- */
 
 /** Escapa un valor para CSV (comillas dobles + separador coma). */
@@ -863,6 +1071,10 @@ export interface BackupBoveda {
     configuracion?: unknown[];
     compras_tarjeta?: unknown[];
     dias_trabajados?: unknown[];
+    proyectos?: unknown[];
+    tareas?: unknown[];
+    recordatorios?: unknown[];
+    notas?: unknown[];
   };
 }
 
@@ -880,6 +1092,10 @@ export async function exportarJSON(): Promise<BackupBoveda> {
     configuracion,
     compras_tarjeta,
     dias_trabajados,
+    proyectos,
+    tareas,
+    recordatorios,
+    notas,
   ] = await Promise.all([
     bovedaDB.cuentas.toArray(),
     bovedaDB.transacciones.toArray(),
@@ -893,11 +1109,15 @@ export async function exportarJSON(): Promise<BackupBoveda> {
     bovedaDB.configuracion.toArray(),
     bovedaDB.compras_tarjeta.toArray(),
     bovedaDB.dias_trabajados.toArray(),
+    bovedaDB.proyectos.toArray(),
+    bovedaDB.tareas.toArray(),
+    bovedaDB.recordatorios.toArray(),
+    bovedaDB.notas.toArray(),
   ]);
 
   return {
     __app: "boveda-financiera",
-    version: 7,
+    version: 9,
     exportadoEn: new Date().toISOString(),
     data: {
       cuentas,
@@ -912,6 +1132,10 @@ export async function exportarJSON(): Promise<BackupBoveda> {
       configuracion,
       compras_tarjeta,
       dias_trabajados,
+      proyectos,
+      tareas,
+      recordatorios,
+      notas,
     },
   };
 }
@@ -936,6 +1160,10 @@ export async function importarJSON(backup: BackupBoveda) {
       bovedaDB.configuracion,
       bovedaDB.compras_tarjeta,
       bovedaDB.dias_trabajados,
+      bovedaDB.proyectos,
+      bovedaDB.tareas,
+      bovedaDB.recordatorios,
+      bovedaDB.notas,
     ],
     async () => {
       await Promise.all([
@@ -951,6 +1179,10 @@ export async function importarJSON(backup: BackupBoveda) {
         bovedaDB.configuracion.clear(),
         bovedaDB.compras_tarjeta.clear(),
         bovedaDB.dias_trabajados.clear(),
+        bovedaDB.proyectos.clear(),
+        bovedaDB.tareas.clear(),
+        bovedaDB.recordatorios.clear(),
+        bovedaDB.notas.clear(),
       ]);
       await Promise.all([
         bovedaDB.cuentas.bulkAdd(data.cuentas as never),
@@ -965,6 +1197,10 @@ export async function importarJSON(backup: BackupBoveda) {
         bovedaDB.configuracion.bulkAdd((data.configuracion ?? []) as never),
         bovedaDB.compras_tarjeta.bulkAdd((data.compras_tarjeta ?? []) as never),
         bovedaDB.dias_trabajados.bulkAdd((data.dias_trabajados ?? []) as never),
+        bovedaDB.proyectos.bulkAdd((data.proyectos ?? []) as never),
+        bovedaDB.tareas.bulkAdd((data.tareas ?? []) as never),
+        bovedaDB.recordatorios.bulkAdd((data.recordatorios ?? []) as never),
+        bovedaDB.notas.bulkAdd((data.notas ?? []) as never),
       ]);
     },
   );

@@ -251,6 +251,27 @@ export interface Nota extends Sincronizable {
   eliminado?: boolean;
 }
 
+/** Hábito a trackear día a día (Fase 2 de "Huella"). */
+export interface Habito extends Sincronizable {
+  id?: number;
+  nombre: string;
+  color_hex: string;
+  activo: boolean;
+  eliminado?: boolean;
+}
+
+/**
+ * Marca de un hábito en un día puntual — una fila por (habito_id, fecha).
+ * `hecho: false` en vez de borrar la fila cuando se desmarca un día, mismo
+ * motivo que en el resto de la app: un borrado físico no sincroniza bien.
+ */
+export interface HabitoRegistro extends Sincronizable {
+  id?: number;
+  habito_id: number;
+  fecha: string; // "yyyy-MM-dd"
+  hecho: boolean;
+}
+
 export const bovedaDB = new Dexie("BovedaFinancieraDB") as Dexie & {
   cuentas: EntityTable<Cuenta, "id">;
   transacciones: EntityTable<Transaccion, "id">;
@@ -268,6 +289,8 @@ export const bovedaDB = new Dexie("BovedaFinancieraDB") as Dexie & {
   tareas: EntityTable<Tarea, "id">;
   recordatorios: EntityTable<Recordatorio, "id">;
   notas: EntityTable<Nota, "id">;
+  habitos: EntityTable<Habito, "id">;
+  habito_registros: EntityTable<HabitoRegistro, "id">;
 };
 
 bovedaDB.version(1).stores({
@@ -387,6 +410,17 @@ bovedaDB.version(9).stores({
   recordatorios:
     "++id, categoria, fecha, activo, eliminado, last_updated",
   notas: "++id, fijada, eliminado, last_updated",
+});
+
+/**
+ * v10 — Fase 2 de "Huella": hábitos. `habito_registros` usa un índice
+ * compuesto único `[habito_id+fecha]` para poder hacer upsert directo por
+ * día sin tener que buscar primero.
+ */
+bovedaDB.version(10).stores({
+  habitos: "++id, nombre, activo, eliminado, last_updated",
+  habito_registros:
+    "++id, habito_id, fecha, &[habito_id+fecha], hecho, last_updated",
 });
 
 /**

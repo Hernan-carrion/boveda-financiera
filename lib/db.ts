@@ -189,6 +189,68 @@ export interface DiaTrabajado extends Sincronizable {
   monto: number;
 }
 
+/* ============================================================================
+ *  "Vida" — tareas, proyectos, recordatorios y notas (Fase 1 de Huella)
+ * ========================================================================== */
+
+/** Agrupa tareas relacionadas bajo un mismo objetivo (ej: "Viaje a Bariloche"). */
+export interface Proyecto extends Sincronizable {
+  id?: number;
+  nombre: string;
+  descripcion?: string;
+  color_hex: string;
+  estado: "activo" | "archivado";
+  eliminado?: boolean;
+}
+
+export type PrioridadTarea = "baja" | "media" | "alta";
+export type EstadoTarea = "pendiente" | "hecha";
+
+export interface Tarea extends Sincronizable {
+  id?: number;
+  titulo: string;
+  descripcion?: string;
+  /** "yyyy-MM-dd" — opcional, hay tareas sin fecha ("algún día"). */
+  fecha_vencimiento?: string;
+  prioridad: PrioridadTarea;
+  proyecto_id?: number;
+  estado: EstadoTarea;
+  /** ISO — cuándo se marcó como hecha. */
+  completada_en?: string;
+  eliminado?: boolean;
+}
+
+export type RepeticionRecordatorio = "ninguna" | "mensual" | "anual";
+
+/**
+ * Recordatorio genérico (turnos, vencimientos de documentos, cumpleaños,
+ * trámites…) — no mueve plata ni cuenta como transacción, a diferencia de
+ * una suscripción. `fecha` es siempre la PRÓXIMA ocurrencia: si `repetir`
+ * no es "ninguna", se recalcula sola una vez que pasa.
+ */
+export interface Recordatorio extends Sincronizable {
+  id?: number;
+  titulo: string;
+  categoria: string;
+  /** "yyyy-MM-dd" — próxima fecha en la que corresponde. */
+  fecha: string;
+  repetir: RepeticionRecordatorio;
+  /** Con cuántos días de anticipación avisar. */
+  dias_aviso: number;
+  activo: boolean;
+  /** Última fecha ("yyyy-MM-dd") para la que ya se avisó — evita repetir el toast. */
+  ultimo_aviso_fecha?: string;
+  eliminado?: boolean;
+}
+
+/** Nota rápida sin fecha ni proyecto — listas, ideas sueltas, lo que sea. */
+export interface Nota extends Sincronizable {
+  id?: number;
+  texto: string;
+  fijada: boolean;
+  eliminado?: boolean;
+}
+
 export const bovedaDB = new Dexie("BovedaFinancieraDB") as Dexie & {
   cuentas: EntityTable<Cuenta, "id">;
   transacciones: EntityTable<Transaccion, "id">;
@@ -202,6 +264,10 @@ export const bovedaDB = new Dexie("BovedaFinancieraDB") as Dexie & {
   configuracion: EntityTable<Configuracion, "id">;
   compras_tarjeta: EntityTable<CompraTarjeta, "id">;
   dias_trabajados: EntityTable<DiaTrabajado, "id">;
+  proyectos: EntityTable<Proyecto, "id">;
+  tareas: EntityTable<Tarea, "id">;
+  recordatorios: EntityTable<Recordatorio, "id">;
+  notas: EntityTable<Nota, "id">;
 };
 
 bovedaDB.version(1).stores({
@@ -307,6 +373,20 @@ bovedaDB.version(7).stores({
 bovedaDB.version(8).stores({
   suscripciones:
     "++id, descripcion, categoria, cuenta_id, dia_cobro, activa, eliminado, last_updated",
+});
+
+/**
+ * v9 — Fase 1 de "Huella": tareas, proyectos, recordatorios y notas. Primer
+ * módulo que no es financiero — mismo patrón local-first + borrado lógico
+ * que todo lo demás.
+ */
+bovedaDB.version(9).stores({
+  proyectos: "++id, nombre, estado, eliminado, last_updated",
+  tareas:
+    "++id, proyecto_id, estado, prioridad, fecha_vencimiento, eliminado, last_updated",
+  recordatorios:
+    "++id, categoria, fecha, activo, eliminado, last_updated",
+  notas: "++id, fijada, eliminado, last_updated",
 });
 
 /**

@@ -155,6 +155,52 @@ create table if not exists public.dias_trabajados (
   last_updated text
 );
 
+-- ----- "Vida" (Huella, fase 1): tareas, proyectos, recordatorios, notas -----
+
+create table if not exists public.proyectos (
+  id           bigint primary key,
+  nombre       text,
+  descripcion  text,
+  color_hex    text,
+  estado       text,
+  eliminado    boolean default false,
+  last_updated text
+);
+
+create table if not exists public.tareas (
+  id                bigint primary key,
+  titulo            text,
+  descripcion       text,
+  fecha_vencimiento text,
+  prioridad         text,
+  proyecto_id       bigint,
+  estado            text,
+  completada_en     text,
+  eliminado         boolean default false,
+  last_updated      text
+);
+
+create table if not exists public.recordatorios (
+  id                 bigint primary key,
+  titulo             text,
+  categoria          text,
+  fecha              text,
+  repetir            text,
+  dias_aviso         integer default 2,
+  activo             boolean default true,
+  ultimo_aviso_fecha text,
+  eliminado          boolean default false,
+  last_updated       text
+);
+
+create table if not exists public.notas (
+  id           bigint primary key,
+  texto        text,
+  fijada       boolean default false,
+  eliminado    boolean default false,
+  last_updated text
+);
+
 -- ============================================================================
 --  SEGURIDAD (RLS) — REQUERIDO para que el sync pueda escribir
 -- ----------------------------------------------------------------------------
@@ -173,7 +219,8 @@ begin
   foreach t in array array['cuentas','transacciones','tarjetas',
                            'deudas_tarjetas','inversiones','prestamos',
                            'presupuestos','suscripciones','metas_ahorro',
-                           'configuracion','compras_tarjeta','dias_trabajados']
+                           'configuracion','compras_tarjeta','dias_trabajados',
+                           'proyectos','tareas','recordatorios','notas']
   loop
     execute format('alter table public.%I enable row level security;', t);
     execute format('drop policy if exists "boveda_rw" on public.%I;', t);

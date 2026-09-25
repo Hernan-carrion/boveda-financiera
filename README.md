@@ -1,9 +1,11 @@
-# 🏦 Bóveda Financiera
+# 👣 Huella
 
-PWA **100% local-first** para gestión de finanzas personales: cuentas multimoneda,
-tarjetas, préstamos y carga rápida de gastos en lenguaje natural. No hay servidor
-ni base de datos remota — **todos los datos viven en tu navegador** (IndexedDB via
-Dexie) y nunca salen del dispositivo.
+PWA **100% local-first** para organizar tu vida: hoy cubre finanzas personales
+(cuentas multimoneda, tarjetas, préstamos y carga rápida de gastos en lenguaje
+natural); en camino, tareas, hábitos, recordatorios y metas de vida. No hay
+servidor ni base de datos remota — **todos los datos viven en tu navegador**
+(IndexedDB via Dexie) y nunca salen del dispositivo salvo que actives la
+sincronización opcional con Supabase.
 
 ## 🔗 Demo en vivo
 

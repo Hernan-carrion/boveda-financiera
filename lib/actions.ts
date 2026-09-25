@@ -918,7 +918,7 @@ export async function exportarJSON(): Promise<BackupBoveda> {
 
 export async function importarJSON(backup: BackupBoveda) {
   if (!backup || backup.__app !== "boveda-financiera" || !backup.data) {
-    throw new Error("El archivo no es un backup válido de Bóveda Financiera.");
+    throw new Error("El archivo no es un backup válido de Huella.");
   }
   const { data } = backup;
   await bovedaDB.transaction(

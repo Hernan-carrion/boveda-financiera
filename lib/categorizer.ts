@@ -149,7 +149,28 @@ const DICC_CATEGORIAS: { categoria: string; claves: string[] }[] = [
   { categoria: "Salidas", claves: ["sofi", "cine", "cena", "bar", "boliche", "salida"] },
   {
     categoria: "Comida",
-    claves: ["super", "chino", "supermercado", "carne", "carniceria", "verduleria"],
+    claves: [
+      "super",
+      "chino",
+      "supermercado",
+      "carne",
+      "carniceria",
+      "verduleria",
+      "medialuna",
+      "medialunas",
+      "hamburguesa",
+      "desayuno",
+      "panaderia",
+    ],
+  },
+  {
+    categoria: "Kiosco",
+    claves: ["cigarros", "cigarrillos", "chicle", "chicles", "kiosco", "golosinas"],
+  },
+  { categoria: "Regalos", claves: ["regalo", "regalos", "ramo", "flores"] },
+  {
+    categoria: "Hogar",
+    claves: ["gas", "garrafa", "alquiler", "expensas", "factura luz", "factura agua"],
   },
 ];
 
@@ -206,6 +227,9 @@ export const CATEGORIAS_DISPONIBLES = [
   "Deporte/Ocio",
   "Salidas",
   "Comida",
+  "Kiosco",
+  "Regalos",
+  "Hogar",
   "Ingresos",
   "Sueldo",
   CATEGORIA_COMISION,
@@ -226,6 +250,9 @@ export const CATEGORIAS_EGRESO = [
   "Deporte/Ocio",
   "Salidas",
   "Comida",
+  "Kiosco",
+  "Regalos",
+  "Hogar",
   "Suscripciones",
   "Tarjetas",
   "Sin categoría",
@@ -244,8 +271,9 @@ export const CATEGORIAS_NECESIDAD = [
   "Herramientas/Trabajo",
   "Suscripciones",
   "Tarjetas",
+  "Hogar",
   "Sin categoría",
 ];
-export const CATEGORIAS_DESEO = ["Deporte/Ocio", "Salidas"];
+export const CATEGORIAS_DESEO = ["Deporte/Ocio", "Salidas", "Kiosco", "Regalos"];
 
 export default procesarTextoGasto;

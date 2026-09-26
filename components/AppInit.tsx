@@ -7,7 +7,7 @@ import {
   avisarRecordatoriosProximos,
   procesarSuscripcionesVencidas,
 } from "@/lib/actions";
-import { startAutoSync, pullFromCloud } from "@/lib/syncService";
+import { startAutoSync, pullFromCloud, pushConCola } from "@/lib/syncService";
 import { supabaseEnabled } from "@/lib/supabase";
 import { formatMoneda } from "@/lib/utils";
 
@@ -22,6 +22,17 @@ import { formatMoneda } from "@/lib/utils";
  *  - Cobra las suscripciones vencidas del mes y avisa con un toast.
  *  - Avisa (sin cobrar) las suscripciones que se cobran en 2 días.
  *  - Avisa los recordatorios próximos (turnos, vencimientos de documentos…).
+ *  - Si algo de lo anterior escribió localmente, sube ese cambio a la nube
+ *    ACÁ MISMO (`pushConCola`), sin esperar al auto-push reactivo — ese
+ *    depende de un listener (`onEscrituraLocal`) que recién se conecta más
+ *    abajo, en `startAutoSync`, así que una escritura de ESTE mismo `init()`
+ *    (como el cobro de una suscripción vencida) pasa antes de que el
+ *    listener exista y nunca dispara el auto-push. Si el usuario cierra la
+ *    pestaña o navega rápido después de abrir la app, ese cobro queda sólo
+ *    local — y el próximo pull lo vuelve a ver como "no cobrado todavía" y
+ *    lo cobra de nuevo. Confirmado en producción: probarlo a mano generó
+ *    varios cobros duplicados de una suscripción, todos locales, ninguno
+ *    llegó a subir — exactamente este hueco.
  *  - Recién ahí arranca el resto de la sincronización automática (realtime +
  *    cola offline + auto-push en tiempo real de cada cambio local).
  * Se monta una sola vez desde el layout raíz.
@@ -80,6 +91,19 @@ export default function AppInit() {
         }
       } catch {
         /* no bloquea la carga de la app */
+      }
+
+      if (supabaseEnabled) {
+        try {
+          // Push incondicional: procesarSuscripcionesVencidas/avisar* pueden
+          // haber escrito (cobro, avance de fecha de un recordatorio que se
+          // repite, marca de aviso) sin que haya forma barata de saber cuál
+          // de las tres escribió — más simple y más seguro subir siempre acá
+          // que arriesgarse a dejar una escritura sin sincronizar.
+          await pushConCola();
+        } catch {
+          /* si falla, el auto-push de startAutoSync más abajo lo va a reintentar en la próxima escritura */
+        }
       }
 
       if (cancelado || !supabaseEnabled) return;

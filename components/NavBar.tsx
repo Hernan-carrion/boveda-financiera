@@ -27,6 +27,13 @@ import {
 } from "lucide-react";
 
 /**
+ * En GitHub Pages de proyecto el sitio vive bajo /boveda-financiera. Un <img>
+ * plano no recibe el basePath solo (a diferencia de <Link>), así que lo
+ * anteponemos a mano — mismo patrón que ServiceWorkerRegister.tsx.
+ */
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
+/**
  * Dos pilares (ver la vista previa de diseño que aprobó el usuario): Vida en
  * violeta, Finanzas en esmeralda. En mobile colapsa a un menú hamburguesa —
  * antes la lista completa de 19 links ocupaba toda la primera pantalla y
@@ -76,17 +83,9 @@ export default function NavBar() {
     <header className="border-b border-zinc-800 bg-slate-950/80 backdrop-blur sticky top-0 z-10">
       <nav className="mx-auto max-w-5xl px-4 py-3">
         <div className="flex items-center justify-between gap-4">
-          <Link
-            href="/"
-            prefetch={false}
-            className="font-display text-lg font-bold tracking-tight"
-          >
-            <span aria-hidden className="mr-1">
-              👣
-            </span>
-            <span className="bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
-              Huella
-            </span>
+          <Link href="/" prefetch={false} className="shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element -- export estático, sin loader de next/image */}
+            <img src={`${BASE}/logo-header.png`} alt="Huella" className="h-10 w-auto" />
           </Link>
 
           <div className="hidden flex-1 flex-col gap-2 text-sm text-zinc-400 sm:flex sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-6 sm:gap-y-2">

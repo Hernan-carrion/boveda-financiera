@@ -1,8 +1,14 @@
 /* Bóveda Financiera — Service Worker
  * Estrategia: Stale-While-Revalidate para same-origin GET.
  * La app es 100% local, así que esto sólo cachea el shell (HTML/CSS/JS/íconos).
+ *
+ * __BUILD_ID__ lo reemplaza scripts/stamp-sw.js con un valor único en cada
+ * build — sin esto, el navegador ve este archivo byte-a-byte igual al ya
+ * instalado y nunca dispara un nuevo install/activate, así que el shell
+ * cacheado (HTML/JS/íconos viejos) queda pegado para siempre sin importar
+ * cuántos deploys nuevos se hagan.
  */
-const CACHE = "boveda-cache-v2";
+const CACHE = "boveda-cache-__BUILD_ID__";
 
 // El SW se sirve en la raíz del scope: en GitHub Pages de proyecto eso es
 // /boveda-financiera/sw.js, en local /sw.js. Derivamos la base de acá para que

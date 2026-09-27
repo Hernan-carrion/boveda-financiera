@@ -1,30 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Space_Grotesk, JetBrains_Mono } from "next/font/google";
-import Link from "next/link";
-import {
-  Wallet,
-  PieChart,
-  History,
-  CreditCard,
-  HandCoins,
-  Coins,
-  Settings,
-  Target,
-  Repeat,
-  PiggyBank,
-  BarChart3,
-  Receipt,
-  CalendarCheck,
-  ListFilter,
-  CheckSquare,
-  Bell,
-  StickyNote,
-  Sun,
-  Flame,
-} from "lucide-react";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import AppInit from "@/components/AppInit";
+import NavBar from "@/components/NavBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -86,49 +65,6 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-/**
- * Dos pilares (ver la vista previa de diseño que aprobó el usuario): Vida en
- * violeta, Finanzas en esmeralda. Todavía en la misma barra horizontal de
- * siempre (no el rail lateral de la maqueta) — reorganizar el layout entero
- * en un sidebar queda para una pasada aparte, más grande y más riesgosa.
- */
-const navGroups: {
-  label: string;
-  accentClass: string;
-  links: { href: string; label: string; Icon: typeof Wallet }[];
-}[] = [
-  {
-    label: "Vida",
-    accentClass: "text-violet-400",
-    links: [
-      { href: "/hoy", label: "Hoy", Icon: Sun },
-      { href: "/tareas", label: "Tareas", Icon: CheckSquare },
-      { href: "/habitos", label: "Hábitos", Icon: Flame },
-      { href: "/recordatorios", label: "Recordatorios", Icon: Bell },
-      { href: "/notas", label: "Notas", Icon: StickyNote },
-    ],
-  },
-  {
-    label: "Finanzas",
-    accentClass: "text-emerald-400",
-    links: [
-      { href: "/", label: "Dashboard", Icon: Wallet },
-      { href: "/movimientos", label: "Movimientos", Icon: ListFilter },
-      { href: "/presupuestos", label: "Presupuestos", Icon: Target },
-      { href: "/metas", label: "Metas", Icon: PiggyBank },
-      { href: "/suscripciones", label: "Suscripciones", Icon: Repeat },
-      { href: "/sueldo", label: "Cuenta sueldo", Icon: CalendarCheck },
-      { href: "/por-cobrar", label: "Por cobrar", Icon: Receipt },
-      { href: "/estadisticas", label: "Estadísticas", Icon: BarChart3 },
-      { href: "/resumen", label: "Resumen", Icon: PieChart },
-      { href: "/historico", label: "Histórico", Icon: History },
-      { href: "/tarjetas", label: "Tarjetas", Icon: CreditCard },
-      { href: "/prestamos", label: "Préstamos", Icon: HandCoins },
-      { href: "/inversiones", label: "Inversiones", Icon: Coins },
-    ],
-  },
-];
-
 export default function RootLayout({
   children,
 }: {
@@ -140,52 +76,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100">
-        <header className="border-b border-zinc-800 bg-slate-950/80 backdrop-blur sticky top-0 z-10">
-          <nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-            <Link
-              href="/"
-              prefetch={false}
-              className="font-display text-lg font-bold tracking-tight"
-            >
-              <span aria-hidden className="mr-1">
-                👣
-              </span>
-              <span className="bg-gradient-to-r from-emerald-300 to-emerald-500 bg-clip-text text-transparent">
-                Huella
-              </span>
-            </Link>
-            <div className="flex flex-1 flex-col gap-2 text-sm text-zinc-400 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-6 sm:gap-y-2">
-              {navGroups.map((grupo) => (
-                <div key={grupo.label} className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                  <span
-                    className={`text-[10px] font-semibold uppercase tracking-wider ${grupo.accentClass}`}
-                  >
-                    {grupo.label}
-                  </span>
-                  {grupo.links.map(({ href, label, Icon }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      prefetch={false}
-                      className="flex items-center gap-1.5 transition-colors hover:text-zinc-100"
-                    >
-                      <Icon size={16} />
-                      {label}
-                    </Link>
-                  ))}
-                </div>
-              ))}
-              <Link
-                href="/configuracion"
-                prefetch={false}
-                className="flex items-center gap-1.5 transition-colors hover:text-zinc-100"
-              >
-                <Settings size={16} />
-                Configuración
-              </Link>
-            </div>
-          </nav>
-        </header>
+        <NavBar />
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
           {children}
         </main>

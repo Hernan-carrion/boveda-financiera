@@ -154,6 +154,13 @@ function NuevaSuscripcionForm({
     if (!(m > 0)) return setMsg("El monto debe ser mayor a 0.");
     if (cuenta_id == null) return setMsg("Creá una cuenta primero.");
 
+    // Si el día de cobro de este mes ya pasó, el primer cobro tiene que ser
+    // recién el mes que viene — sin esto, procesarSuscripcionesVencidas la
+    // ve "vencida" apenas se crea y la cobra al toque, aunque el usuario la
+    // acaba de cargar (ej: hoy es 27 y el día de cobro es el 4).
+    const hoy = new Date();
+    const yaPasoEsteMes = hoy.getDate() >= dia;
+
     await bovedaDB.suscripciones.add({
       descripcion: descripcion.trim(),
       monto: m,
@@ -162,6 +169,7 @@ function NuevaSuscripcionForm({
       cuenta_id,
       dia_cobro: dia,
       activa: true,
+      ultimo_cobro_periodo: yaPasoEsteMes ? periodoActual(hoy) : undefined,
       last_updated: new Date().toISOString(),
     });
     setDescripcion("");

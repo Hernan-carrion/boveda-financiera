@@ -43,6 +43,10 @@ jobs:
           # y el build sigue siendo 100% local (el sync se deshabilita solo).
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          # Clave PÚBLICA de VAPID para notificaciones push (no es secreta, viaja
+          # igual en el bundle del cliente) — si no está configurada, el botón
+          # "Activar notificaciones" de Configuración queda deshabilitado solo.
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

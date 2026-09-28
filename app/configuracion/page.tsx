@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   Download,
@@ -10,6 +10,8 @@ import {
   Trash2,
   Cloud,
   Loader2,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import { bovedaDB, type Moneda, type TipoCuenta } from "@/lib/db";
 import {
@@ -20,6 +22,7 @@ import {
 } from "@/lib/actions";
 import { pushToCloud, pullFromCloud } from "@/lib/syncService";
 import { supabaseEnabled } from "@/lib/supabase";
+import { activarPush, desactivarPush, estadoPush, pushSupported, type EstadoPush } from "@/lib/push";
 import {
   getCotizacionUSD,
   setCotizacionUSD,
@@ -146,6 +149,8 @@ export default function ConfiguracionPage() {
       </section>
 
       <CloudSyncSection />
+
+      <PushNotificacionesSection />
 
       <section>
         <SectionTitle>Cuentas</SectionTitle>
@@ -436,6 +441,87 @@ function CloudSyncSection() {
             {res.text}
           </p>
         )}
+      </Card>
+    </section>
+  );
+}
+
+function PushNotificacionesSection() {
+  const [estado, setEstado] = useState<EstadoPush | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    estadoPush().then(setEstado);
+  }, []);
+
+  async function activar() {
+    setBusy(true);
+    setMsg(null);
+    const r = await activarPush();
+    setMsg(r.mensaje);
+    setEstado(await estadoPush());
+    setBusy(false);
+  }
+
+  async function desactivar() {
+    setBusy(true);
+    setMsg(null);
+    await desactivarPush();
+    setEstado(await estadoPush());
+    setBusy(false);
+  }
+
+  return (
+    <section>
+      <SectionTitle>Notificaciones push</SectionTitle>
+      <Card className="flex flex-col gap-3">
+        <p className="text-sm text-zinc-400">
+          Recibí un aviso en el celu/compu el mismo día de cada recordatorio a
+          las 8hs (o con los días de antelación que configures en cada uno),
+          aunque la app esté cerrada.
+        </p>
+        {!pushSupported && (
+          <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-300">
+            Este navegador no soporta notificaciones push, o falta configurar{" "}
+            <code>NEXT_PUBLIC_VAPID_PUBLIC_KEY</code>.
+          </p>
+        )}
+        {pushSupported && estado === "denegado" && (
+          <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-xs text-red-300">
+            Bloqueaste las notificaciones para este sitio. Habilitalas en los
+            permisos del navegador para poder activarlas acá.
+          </p>
+        )}
+        {pushSupported && estado === "activo" && (
+          <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-300">
+            Notificaciones activadas en este dispositivo.
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {estado === "activo" ? (
+            <button
+              type="button"
+              onClick={desactivar}
+              disabled={busy}
+              className={btnGhostCls}
+            >
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <BellOff size={16} />}
+              Desactivar en este dispositivo
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={activar}
+              disabled={busy || !pushSupported || estado === "denegado"}
+              className={btnCls}
+            >
+              {busy ? <Loader2 size={16} className="animate-spin" /> : <Bell size={16} />}
+              Activar notificaciones
+            </button>
+          )}
+        </div>
+        {msg && <p className="text-xs text-zinc-400">{msg}</p>}
       </Card>
     </section>
   );

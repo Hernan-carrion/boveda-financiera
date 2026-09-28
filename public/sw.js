@@ -43,6 +43,42 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Notificaciones push de recordatorios — el payload lo arma la Edge Function
+// de Supabase (supabase/functions/send-recordatorios), no esta app.
+self.addEventListener("push", (event) => {
+  let datos = { title: "Huella", body: "Tenés un recordatorio." };
+  try {
+    if (event.data) datos = { ...datos, ...event.data.json() };
+  } catch {
+    /* payload no-JSON, se usa el texto default */
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(datos.title, {
+      body: datos.body,
+      icon: `${BASE}/icon-192.png`,
+      badge: `${BASE}/icon-192.png`,
+      data: { url: datos.url || `${BASE}/recordatorios/` },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || `${BASE}/recordatorios/`;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if (client.url.includes(BASE) && "focus" in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    })
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;

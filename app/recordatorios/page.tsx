@@ -126,7 +126,7 @@ function NuevoRecordatorioForm() {
   const [categoria, setCategoria] = useState<string>(CATEGORIAS_RECORDATORIO[0]);
   const [fecha, setFecha] = useState("");
   const [repetir, setRepetir] = useState<RepeticionRecordatorio>("ninguna");
-  const [diasAviso, setDiasAviso] = useState("2");
+  const [diasAviso, setDiasAviso] = useState("0");
   const [msg, setMsg] = useState<string | null>(null);
 
   const esDocumento = categoria === "Documento";
@@ -144,7 +144,7 @@ function NuevoRecordatorioForm() {
       setTitulo("");
       setFecha("");
       setRepetir("ninguna");
-      setDiasAviso("2");
+      setDiasAviso("0");
       setMsg("Recordatorio creado ✓");
     } catch (err) {
       setMsg(err instanceof Error ? err.message : "No se pudo crear.");

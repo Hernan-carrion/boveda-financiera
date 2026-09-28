@@ -189,9 +189,12 @@ create table if not exists public.recordatorios (
   dias_aviso         integer default 2,
   activo             boolean default true,
   ultimo_aviso_fecha text,
+  ultimo_push_fecha  text,
   eliminado          boolean default false,
   last_updated       text
 );
+
+alter table public.recordatorios add column if not exists ultimo_push_fecha text;
 
 create table if not exists public.notas (
   id           bigint primary key,
@@ -220,6 +223,20 @@ create table if not exists public.habito_registros (
   last_updated text
 );
 
+-- ----- Notificaciones push de recordatorios -----
+-- A diferencia de las demás tablas, esta NO se sincroniza con Dexie/local: es
+-- pura infraestructura server-side. Guarda la suscripción Web Push (endpoint
+-- + claves) que genera el navegador; la Edge Function send-recordatorios la
+-- lee para saber a dónde mandar cada notificación. Sin `last_updated` porque
+-- nada la sincroniza hacia atrás.
+create table if not exists public.push_subscriptions (
+  id         bigint generated always as identity primary key,
+  endpoint   text unique not null,
+  p256dh     text not null,
+  auth       text not null,
+  creado     timestamptz default now()
+);
+
 -- ============================================================================
 --  SEGURIDAD (RLS) — REQUERIDO para que el sync pueda escribir
 -- ----------------------------------------------------------------------------
@@ -240,7 +257,7 @@ begin
                            'presupuestos','suscripciones','metas_ahorro',
                            'configuracion','compras_tarjeta','dias_trabajados',
                            'proyectos','tareas','recordatorios','notas',
-                           'habitos','habito_registros']
+                           'habitos','habito_registros','push_subscriptions']
   loop
     execute format('alter table public.%I enable row level security;', t);
     execute format('drop policy if exists "boveda_rw" on public.%I;', t);

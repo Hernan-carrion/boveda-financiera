@@ -556,7 +556,7 @@ export async function crearRecordatorio(params: {
     categoria: params.categoria || "General",
     fecha: params.fecha,
     repetir: params.repetir ?? "ninguna",
-    dias_aviso: params.dias_aviso ?? 2,
+    dias_aviso: params.dias_aviso ?? 0,
     activo: true,
     last_updated: new Date().toISOString(),
   });

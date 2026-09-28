@@ -240,6 +240,14 @@ export interface Recordatorio extends Sincronizable {
   activo: boolean;
   /** Última fecha ("yyyy-MM-dd") para la que ya se avisó — evita repetir el toast. */
   ultimo_aviso_fecha?: string;
+  /**
+   * Última fecha ("yyyy-MM-dd") para la que ya se mandó la notificación push
+   * — la escribe la Edge Function server-side (supabase/functions/send-
+   * recordatorios), nunca el cliente. Campo separado de `ultimo_aviso_fecha`
+   * a propósito: son dos mecanismos de aviso independientes (toast local vs.
+   * push real) y no deben pisarse entre sí.
+   */
+  ultimo_push_fecha?: string;
   eliminado?: boolean;
 }
 

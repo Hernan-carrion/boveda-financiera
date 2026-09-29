@@ -26,7 +26,7 @@ const PRIORIDADES: { value: PrioridadTarea; label: string }[] = [
 const COLOR_PRIORIDAD: Record<PrioridadTarea, string> = {
   alta: "text-red-400",
   media: "text-amber-400",
-  baja: "text-zinc-500",
+  baja: "text-subtle",
 };
 
 const COLORES_PROYECTO = ["#34d399", "#38bdf8", "#a78bfa", "#fbbf24", "#f87171", "#fb923c"];
@@ -119,7 +119,7 @@ export default function TareasPage() {
       <section>
         <SectionTitle>{`Tareas (${filtradas.length})`}</SectionTitle>
         {tareas === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <p className="text-sm text-subtle">Cargando…</p>
         ) : filtradas.length === 0 ? (
           <EmptyState>No hay tareas con estos filtros.</EmptyState>
         ) : (
@@ -137,7 +137,7 @@ export default function TareasPage() {
                     type="button"
                     onClick={() => t.id != null && completarTarea(t.id, !hecha)}
                     aria-label={hecha ? "Marcar pendiente" : "Marcar hecha"}
-                    className="shrink-0 text-zinc-500 transition-colors hover:text-emerald-400"
+                    className="shrink-0 text-subtle transition-colors hover:text-emerald-400"
                   >
                     {hecha ? (
                       <CheckSquare size={18} className="text-emerald-400" />
@@ -153,12 +153,12 @@ export default function TareasPage() {
                     <p
                       className={cn(
                         "truncate text-sm",
-                        hecha ? "text-zinc-500 line-through" : "text-zinc-200",
+                        hecha ? "text-subtle line-through" : "text-zinc-200",
                       )}
                     >
                       {t.titulo}
                     </p>
-                    <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-zinc-500">
+                    <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-subtle">
                       {proyNombre && (
                         <span className="flex items-center gap-1">
                           <span
@@ -205,7 +205,7 @@ export default function TareasPage() {
               <button
                 type="button"
                 onClick={() => p.id != null && borrarProyecto(p.id)}
-                className="text-xs text-zinc-500 transition-colors hover:text-red-400"
+                className="text-xs text-subtle transition-colors hover:text-red-400"
               >
                 Archivar
               </button>

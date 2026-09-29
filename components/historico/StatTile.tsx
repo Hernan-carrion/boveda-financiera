@@ -44,10 +44,10 @@ export default function StatTile({
     <div className="flex h-full flex-col justify-between gap-3">
       <div className="flex items-center gap-2">
         <span className={cn("size-1.5 rounded-full", dotColor[accent])} />
-        <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-zinc-500">
+        <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-subtle">
           {label}
         </span>
-        {Icon && <Icon size={14} className="ml-auto text-zinc-600" />}
+        {Icon && <Icon size={14} className="ml-auto text-subtle" />}
       </div>
 
       <div>
@@ -77,7 +77,7 @@ export default function StatTile({
               {formatPct(trend ?? 0)}
             </span>
           )}
-          {sub && <span className="text-xs text-zinc-500">{sub}</span>}
+          {sub && <span className="text-xs text-subtle">{sub}</span>}
         </div>
       </div>
     </div>

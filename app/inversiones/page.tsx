@@ -54,7 +54,7 @@ export default function InversionesPage() {
     <div className="flex flex-col gap-8">
       <section>
         <SectionTitle>Cambio de divisas</SectionTitle>
-        <p className="mb-3 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-subtle">
           Mueve dinero real entre dos de tus cuentas: sale de la cuenta de
           origen y entra a la de destino ya convertido con la cotización que
           cargues. Si compras dólares, también queda registrada la compra acá
@@ -65,7 +65,7 @@ export default function InversionesPage() {
 
       <section>
         <SectionTitle>Registrar compra de dólares (sólo cartera)</SectionTitle>
-        <p className="mb-3 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-subtle">
           Para llevar el precio promedio de compra sin mover plata de ninguna
           cuenta (por ejemplo, dólares que ya tenías antes de usar la app).
         </p>
@@ -76,7 +76,7 @@ export default function InversionesPage() {
         <SectionTitle>Tenencia de dólares</SectionTitle>
         <div className="grid gap-3 sm:grid-cols-3">
           <Card>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
+            <p className="text-xs uppercase tracking-wide text-subtle">
               USD comprados (activos)
             </p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-50">
@@ -84,7 +84,7 @@ export default function InversionesPage() {
             </p>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
+            <p className="text-xs uppercase tracking-wide text-subtle">
               ARS invertidos
             </p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-50">
@@ -92,7 +92,7 @@ export default function InversionesPage() {
             </p>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
+            <p className="text-xs uppercase tracking-wide text-subtle">
               Precio promedio de compra
             </p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-50">
@@ -105,7 +105,7 @@ export default function InversionesPage() {
       <section>
         <SectionTitle>Compras registradas</SectionTitle>
         {inversiones === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <p className="text-sm text-subtle">Cargando…</p>
         ) : compras.length === 0 ? (
           <EmptyState>Todavía no registraste compras de dólares.</EmptyState>
         ) : (
@@ -123,20 +123,20 @@ export default function InversionesPage() {
                     <p className="font-medium text-zinc-200">
                       {c.tipo}
                       {c.estado === "cerrada" && (
-                        <span className="ml-2 text-xs text-zinc-500">
+                        <span className="ml-2 text-xs text-subtle">
                           (cerrada)
                         </span>
                       )}
                     </p>
                     {c.fecha && (
-                      <p className="text-xs text-zinc-500">
+                      <p className="text-xs text-subtle">
                         {formatFecha(c.fecha)}
                       </p>
                     )}
                   </div>
 
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-500">
+                    <p className="text-xs uppercase tracking-wide text-subtle">
                       Monto adquirido
                     </p>
                     <p className="tabular-nums text-emerald-400">
@@ -145,7 +145,7 @@ export default function InversionesPage() {
                   </div>
 
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-500">
+                    <p className="text-xs uppercase tracking-wide text-subtle">
                       Cotización compra
                     </p>
                     <p className="tabular-nums text-zinc-200">
@@ -154,7 +154,7 @@ export default function InversionesPage() {
                   </div>
 
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-500">
+                    <p className="text-xs uppercase tracking-wide text-subtle">
                       Total ARS invertidos
                     </p>
                     <p className="tabular-nums text-zinc-200">
@@ -169,7 +169,7 @@ export default function InversionesPage() {
                       <button
                         type="button"
                         onClick={() => cerrarInversion(c.id!)}
-                        className="text-xs text-zinc-500 hover:text-zinc-200"
+                        className="text-xs text-subtle hover:text-zinc-200"
                       >
                         Cerrar
                       </button>
@@ -178,7 +178,7 @@ export default function InversionesPage() {
                       <button
                         type="button"
                         onClick={() => borrarInversion(c.id!)}
-                        className="text-zinc-600 hover:text-red-400"
+                        className="text-subtle hover:text-red-400"
                         aria-label="Borrar compra"
                       >
                         <X size={15} />
@@ -203,7 +203,7 @@ export default function InversionesPage() {
               >
                 <span className="text-zinc-200">
                   {i.nombre}{" "}
-                  <span className="text-xs text-zinc-500">({i.tipo})</span>
+                  <span className="text-xs text-subtle">({i.tipo})</span>
                 </span>
                 <span className="tabular-nums text-zinc-300">
                   {formatMoneda(i.capital_inicial, i.moneda)}
@@ -353,8 +353,8 @@ function CambioDivisaForm() {
 
       {origen && destino && origen.moneda !== destino.moneda && (
         <div className="mt-3 flex items-center gap-2 text-sm">
-          <ArrowRightLeft size={15} className="text-zinc-500" />
-          <span className="text-zinc-500">
+          <ArrowRightLeft size={15} className="text-subtle" />
+          <span className="text-subtle">
             {operacion ? `${operacion}:` : ""}
           </span>
           <span className="font-semibold tabular-nums text-zinc-100">
@@ -456,8 +456,8 @@ function CompraDolaresForm() {
       </form>
 
       <div className="mt-3 flex items-center gap-2 text-sm">
-        <Coins size={15} className="text-zinc-500" />
-        <span className="text-zinc-500">Costo de la operación:</span>
+        <Coins size={15} className="text-subtle" />
+        <span className="text-subtle">Costo de la operación:</span>
         <span className="font-semibold tabular-nums text-zinc-100">
           {costoArs > 0 ? formatMoneda(costoArs, "ARS") : "—"}
         </span>

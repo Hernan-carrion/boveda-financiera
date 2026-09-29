@@ -31,7 +31,7 @@ export default function NotasPage() {
       <section>
         <SectionTitle>{`Notas (${ordenadas.length})`}</SectionTitle>
         {notas === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <p className="text-sm text-subtle">Cargando…</p>
         ) : ordenadas.length === 0 ? (
           <EmptyState>Todavía no cargaste notas.</EmptyState>
         ) : (
@@ -139,7 +139,7 @@ function NotaCard({ nota }: { nota: Nota }) {
   return (
     <Card className="flex flex-col gap-2">
       <p className="whitespace-pre-wrap text-sm text-zinc-200">{nota.texto}</p>
-      <div className="mt-1 flex items-center justify-end gap-1 text-zinc-500">
+      <div className="mt-1 flex items-center justify-end gap-1 text-subtle">
         <button
           type="button"
           onClick={() => nota.id != null && fijarNota(nota.id, !nota.fijada)}

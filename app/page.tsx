@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Wallet,
@@ -26,7 +27,7 @@ import { ProgressBar, CircleProgress } from "@/components/ProgressBar";
 import { Card, SectionTitle, EmptyState } from "@/components/ui";
 
 const bento =
-  "rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5";
+  "rounded-2xl border border-line bg-surface p-5 transition-colors duration-200 hover:border-line-strong/80";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 12 },
@@ -127,7 +128,7 @@ export default function DashboardPage() {
         initial="hidden"
         animate="show"
         variants={fadeUp}
-        className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900/80 to-zinc-950 p-6"
+        className="relative overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-zinc-900 via-zinc-900/80 to-emerald-950/30 p-6 shadow-xl shadow-black/30 sm:p-8"
       >
         <svg
           aria-hidden
@@ -151,34 +152,40 @@ export default function DashboardPage() {
         </svg>
         <div className="relative flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="flex items-center gap-2 text-sm text-zinc-400">
-              <TrendingUp size={15} />
+            <h1 className="flex items-center gap-2 text-sm font-medium text-muted">
+              <TrendingUp size={15} aria-hidden className="text-accent" />
               Patrimonio neto consolidado
-            </p>
+            </h1>
             <p
               className={cn(
-                "mt-1 font-tech text-4xl font-semibold tabular-nums",
+                "mt-2 font-tech text-4xl font-semibold tracking-tight tabular-nums sm:text-5xl",
                 patrimonio.total >= 0 ? "text-zinc-50" : "text-red-400",
               )}
             >
               {formatMoneda(patrimonio.total, monedaHero)}
             </p>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-subtle">
               {formatMonedaCompact(patrimonio.totalARS, "ARS")} +{" "}
               {formatMonedaCompact(patrimonio.totalUSD, "USD")} · dólar a{" "}
               {formatMonedaCompact(cot, "ARS")}
             </p>
           </div>
-          <div className="flex overflow-hidden rounded-lg border border-zinc-700 text-sm">
+          <div
+            role="group"
+            aria-label="Moneda del patrimonio"
+            className="flex rounded-xl border border-line-strong bg-zinc-950/60 p-1 text-sm"
+          >
             {(["ARS", "USD"] as const).map((m) => (
               <button
                 key={m}
+                type="button"
+                aria-pressed={monedaHero === m}
                 onClick={() => setMonedaHero(m)}
                 className={cn(
-                  "px-3 py-1.5 transition-colors",
+                  "min-h-9 min-w-14 rounded-lg px-3 font-medium transition-colors duration-150",
                   monedaHero === m
                     ? "bg-zinc-100 text-zinc-900"
-                    : "text-zinc-300 hover:bg-zinc-800",
+                    : "text-zinc-300 hover:bg-white/5",
                 )}
               >
                 {m}
@@ -214,7 +221,7 @@ export default function DashboardPage() {
           </motion.div>
         ))}
         {cuentas !== undefined && Object.keys(saldosPorMoneda).length === 0 && (
-          <Card className="text-sm text-zinc-500 md:col-span-3">
+          <Card className="text-sm text-subtle md:col-span-3">
             No hay cuentas configuradas todavía.
           </Card>
         )}
@@ -223,7 +230,7 @@ export default function DashboardPage() {
       {/* Salud financiera — regla 50/30/20 */}
       <motion.section custom={1.5} initial="hidden" animate="show" variants={fadeUp}>
         <SectionTitle>Salud financiera · 50/30/20</SectionTitle>
-        <p className="mb-4 text-xs text-zinc-500">
+        <p className="mb-4 text-xs text-subtle">
           Cómo se repartió lo que entró este mes en {monedaHero}: necesidades,
           deseos y lo que quedó de ahorro, contra el objetivo clásico 50/30/20.
         </p>
@@ -288,9 +295,9 @@ export default function DashboardPage() {
         {avances.length === 0 ? (
           <EmptyState>
             Sin presupuestos este mes.{" "}
-            <a href="/presupuestos" className="underline hover:text-zinc-300">
+            <Link href="/presupuestos" className="font-medium text-accent underline-offset-4 hover:underline">
               Crear uno
-            </a>
+            </Link>
             .
           </EmptyState>
         ) : (
@@ -299,7 +306,7 @@ export default function DashboardPage() {
               <div key={a.presupuesto.id} className={bento}>
                 <div className="mb-2 flex items-center justify-between text-sm">
                   <span className="flex items-center gap-1.5 text-zinc-200">
-                    <Target size={14} className="text-zinc-500" />
+                    <Target size={14} className="text-subtle" />
                     {a.presupuesto.categoria}
                   </span>
                   <span
@@ -316,7 +323,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <ProgressBar pct={a.pct} estado={a.estado} />
-                <p className="mt-1.5 text-xs text-zinc-500">
+                <p className="mt-1.5 text-xs text-subtle">
                   {formatMoneda(a.gastado, a.presupuesto.moneda)} de{" "}
                   {formatMoneda(a.presupuesto.monto_limite, a.presupuesto.moneda)}
                 </p>
@@ -335,17 +342,17 @@ export default function DashboardPage() {
             return (
               <div
                 key={cuenta.id}
-                className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 transition-colors hover:border-zinc-700"
+                className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 transition-colors duration-200 hover:border-line-strong/80"
               >
-                <div className="flex items-center gap-2">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-zinc-800/80 text-emerald-400">
-                    <Icono size={15} />
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-500/10 text-accent">
+                    <Icono size={16} aria-hidden />
                   </span>
                   <div>
                     <p className="text-sm font-medium text-zinc-200">
                       {cuenta.nombre}
                     </p>
-                    <p className="text-xs capitalize text-zinc-500">{cuenta.tipo}</p>
+                    <p className="text-xs capitalize text-subtle">{cuenta.tipo}</p>
                   </div>
                 </div>
                 <p
@@ -374,11 +381,15 @@ export default function DashboardPage() {
       <section>
         <SectionTitle>Movimientos recientes</SectionTitle>
         {transacciones === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <div aria-busy="true" aria-label="Cargando movimientos" className="flex flex-col gap-2">
+            {Array.from({ length: 4 }, (_, i) => (
+              <div key={i} className="h-14 animate-pulse rounded-xl bg-zinc-900/60" />
+            ))}
+          </div>
         ) : transacciones.length === 0 ? (
           <EmptyState>Todavía no cargaste movimientos.</EmptyState>
         ) : (
-          <ul className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800">
+          <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line">
             {transacciones.map((t) => {
               const positivo = t.tipo === "ingreso" || t.tipo === "devolucion";
               return (
@@ -386,7 +397,7 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => setEditando(t)}
-                    className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 bg-zinc-900/40 px-4 py-3 text-left transition-colors hover:bg-zinc-800/40"
+                    className="flex min-h-14 w-full flex-wrap items-center gap-x-4 gap-y-1 bg-surface px-4 py-3 text-left transition-colors duration-150 hover:bg-white/[0.04]"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm text-zinc-200">
@@ -397,9 +408,9 @@ export default function DashboardPage() {
                           </span>
                         )}
                       </p>
-                      <p className="flex items-center gap-1.5 text-xs text-zinc-500">
+                      <p className="flex items-center gap-1.5 text-xs text-subtle">
                         {formatFecha(t.fecha)} · {t.categoria}
-                        <Pencil size={11} className="text-zinc-600" />
+                        <Pencil size={11} aria-hidden className="text-subtle" />
                       </p>
                     </div>
                     <span

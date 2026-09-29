@@ -96,7 +96,7 @@ export default function EstadisticasPage() {
         <SectionTitle>Evolución histórica (ARS)</SectionTitle>
         <Card>
           {cargando ? (
-            <p className="text-sm text-zinc-500">Cargando…</p>
+            <p className="text-sm text-subtle">Cargando…</p>
           ) : (
             <HistoryLineChart data={serie} />
           )}
@@ -107,7 +107,7 @@ export default function EstadisticasPage() {
         <SectionTitle>Gastos del mes por categoría</SectionTitle>
         <Card>
           {cargando ? (
-            <p className="text-sm text-zinc-500">Cargando…</p>
+            <p className="text-sm text-subtle">Cargando…</p>
           ) : (
             <>
               <CategoryPieChart data={porCategoria} />

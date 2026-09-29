@@ -38,7 +38,7 @@ export default function MetricsCards({
         <p
           className={cn(
             "mt-1 text-sm",
-            alerta ? "text-red-400" : "text-zinc-500",
+            alerta ? "text-red-400" : "text-subtle",
           )}
         >
           Has gastado el {gasto}% de tus ingresos este mes
@@ -54,7 +54,7 @@ export default function MetricsCards({
         <p className="mt-2 text-3xl font-semibold tabular-nums text-zinc-50">
           {devuelto}%
         </p>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-subtle">
           {devuelto}% del dinero prestado ha sido devuelto
         </p>
         <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-800">

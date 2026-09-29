@@ -44,7 +44,7 @@ export default function PrestamosPage() {
       <section>
         <SectionTitle>Abiertos</SectionTitle>
         {prestamos === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <p className="text-sm text-subtle">Cargando…</p>
         ) : abiertos.length === 0 ? (
           <EmptyState>No hay préstamos abiertos.</EmptyState>
         ) : (
@@ -223,10 +223,10 @@ function PrestamoRow({
     <Card>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span className="font-medium text-zinc-200">{prestamo.persona}</span>
-        <span className="text-zinc-500">
+        <span className="text-subtle">
           {prestamo.tipo === "otorgado" ? "le presté" : "me prestó"}
         </span>
-        <span className="text-zinc-500">
+        <span className="text-subtle">
           {formatFecha(prestamo.fecha_prestamo)}
         </span>
         {tieneOrigen && (
@@ -292,11 +292,11 @@ function PrestamoDevueltoRow({ prestamo }: { prestamo: Prestamo }) {
     <Card className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span className="font-medium text-zinc-300">{prestamo.persona}</span>
-        <span className="text-zinc-500">
+        <span className="text-subtle">
           {prestamo.tipo === "otorgado" ? "le presté" : "me prestó"}
         </span>
         {prestamo.fecha_devolucion && (
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-subtle">
             devuelto {formatFecha(prestamo.fecha_devolucion)}
           </span>
         )}
@@ -346,7 +346,7 @@ function PrestamoDevueltoRow({ prestamo }: { prestamo: Prestamo }) {
           </p>
         </div>
       ) : (
-        <p className="text-xs text-zinc-600">
+        <p className="text-xs text-subtle">
           Sin cotizaciones cargadas — no se puede calcular el impacto cambiario.
         </p>
       )}

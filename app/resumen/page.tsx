@@ -35,7 +35,7 @@ export default function ResumenPage() {
       <section>
         <SectionTitle>Indicadores del mes (ARS)</SectionTitle>
         {cargando ? (
-          <Card className="text-sm text-zinc-500">Cargando métricas…</Card>
+          <Card className="text-sm text-subtle">Cargando métricas…</Card>
         ) : (
           <MetricsCards
             ratioGastoIngreso={ratio}
@@ -51,7 +51,7 @@ export default function ResumenPage() {
             <MonthlyBalanceChart ingresos={ingresos} egresos={egresos} />
             <dl className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
               <div>
-                <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                <dt className="text-xs uppercase tracking-wide text-subtle">
                   Ingresos
                 </dt>
                 <dd className="mt-0.5 font-semibold text-emerald-400">
@@ -59,7 +59,7 @@ export default function ResumenPage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                <dt className="text-xs uppercase tracking-wide text-subtle">
                   Egresos
                 </dt>
                 <dd className="mt-0.5 font-semibold text-red-400">
@@ -67,7 +67,7 @@ export default function ResumenPage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                <dt className="text-xs uppercase tracking-wide text-subtle">
                   Balance
                 </dt>
                 <dd

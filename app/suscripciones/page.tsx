@@ -54,7 +54,7 @@ export default function SuscripcionesPage() {
         </div>
 
         {suscripciones === undefined ? (
-          <Card className="text-sm text-zinc-500">Cargando…</Card>
+          <Card className="text-sm text-subtle">Cargando…</Card>
         ) : suscripciones.length === 0 ? (
           <EmptyState>Todavía no cargaste suscripciones.</EmptyState>
         ) : (
@@ -66,12 +66,12 @@ export default function SuscripcionesPage() {
                   key={s.id}
                   className="flex flex-wrap items-center gap-x-4 gap-y-2"
                 >
-                  <Repeat size={16} className="text-zinc-500" />
+                  <Repeat size={16} className="text-subtle" />
                   <div className="min-w-40 flex-1">
                     <p className="text-sm font-medium text-zinc-200">
                       {s.descripcion}
                     </p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-subtle">
                       Día {s.dia_cobro} · {nombreCuenta(s.cuenta_id)} · {s.categoria}
                     </p>
                   </div>
@@ -104,7 +104,7 @@ export default function SuscripcionesPage() {
                   <button
                     type="button"
                     onClick={() => setEditando(s)}
-                    className="text-zinc-600 transition-colors hover:text-zinc-200"
+                    className="text-subtle transition-colors hover:text-zinc-200"
                     aria-label="Editar suscripción"
                   >
                     <Pencil size={15} />

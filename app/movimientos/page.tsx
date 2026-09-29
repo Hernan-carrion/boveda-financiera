@@ -162,7 +162,7 @@ export default function MovimientosPage() {
             {`Movimientos${hayFiltros ? " filtrados" : ""} (${filtrados.length})`}
           </SectionTitle>
           {Object.keys(totalesPorMoneda).length > 0 && (
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-subtle">
               {(Object.entries(totalesPorMoneda) as [Moneda, { ingresos: number; egresos: number }][]).map(
                 ([moneda, t]) => (
                   <span key={moneda}>
@@ -180,7 +180,7 @@ export default function MovimientosPage() {
         </div>
 
         {transacciones === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <p className="text-sm text-subtle">Cargando…</p>
         ) : filtrados.length === 0 ? (
           <EmptyState>
             {hayFiltros
@@ -207,9 +207,9 @@ export default function MovimientosPage() {
                           </span>
                         )}
                       </p>
-                      <p className="flex items-center gap-1.5 text-xs text-zinc-500">
+                      <p className="flex items-center gap-1.5 text-xs text-subtle">
                         {formatFecha(t.fecha)} · {nombreCuenta(t.cuenta_id)} · {t.categoria}
-                        <Pencil size={11} className="text-zinc-600" />
+                        <Pencil size={11} className="text-subtle" />
                       </p>
                     </div>
                     <span

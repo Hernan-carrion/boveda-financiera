@@ -104,7 +104,7 @@ export default function QuickInput() {
 function Dato({ label, valor }: { label: string; valor: string }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className="text-xs uppercase tracking-wide text-subtle">{label}</p>
       <p className="mt-0.5 font-medium capitalize text-zinc-100">{valor}</p>
     </div>
   );

@@ -49,7 +49,7 @@ export default function PorCobrarPage() {
           <div className="mb-3 flex flex-wrap gap-3">
             {Object.entries(totalPendiente).map(([moneda, monto]) => (
               <Card key={moneda} className="px-4 py-2">
-                <span className="text-xs uppercase tracking-wide text-zinc-500">
+                <span className="text-xs uppercase tracking-wide text-subtle">
                   Total {moneda}
                 </span>
                 <p className="text-lg font-semibold tabular-nums text-amber-400">
@@ -61,7 +61,7 @@ export default function PorCobrarPage() {
         )}
 
         {reintegrables === undefined ? (
-          <Card className="text-sm text-zinc-500">Cargando…</Card>
+          <Card className="text-sm text-subtle">Cargando…</Card>
         ) : pendientes.length === 0 ? (
           <EmptyState>
             No tenés gastos reintegrables pendientes. Marcá &quot;Reintegrable&quot;
@@ -79,7 +79,7 @@ export default function PorCobrarPage() {
                   <p className="truncate text-sm text-zinc-200">
                     {t.descripcion || "(sin descripción)"}
                   </p>
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-xs text-subtle">
                     {formatFecha(t.fecha)} · {nombreCuenta(t.cuenta_id)} ·{" "}
                     {t.categoria}
                   </p>
@@ -115,7 +115,7 @@ export default function PorCobrarPage() {
                   <p className="truncate text-sm text-zinc-300">
                     {t.descripcion || "(sin descripción)"}
                   </p>
-                  <p className="text-xs text-zinc-600">{formatFecha(t.fecha)}</p>
+                  <p className="text-xs text-subtle">{formatFecha(t.fecha)}</p>
                 </div>
                 <span className="text-sm tabular-nums text-zinc-400">
                   {formatMoneda(t.monto, t.moneda)}

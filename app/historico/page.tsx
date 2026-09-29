@@ -88,7 +88,7 @@ export default function HistoricoPage() {
           <h1 className="font-display text-2xl font-semibold tracking-tight text-zinc-50">
             Resúmenes mensuales
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-subtle">
             Consolidado histórico de patrimonio y flujo de caja · ARS
           </p>
         </div>
@@ -110,7 +110,7 @@ export default function HistoricoPage() {
               className="sm:col-span-2 lg:col-span-2 lg:row-span-2"
             >
               <div className="flex h-full flex-col">
-                <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-subtle">
                   Patrimonio neto · cierre {label}
                 </span>
                 <p className="mt-3 font-tech text-[2.5rem] leading-none text-[#60a5fa] sm:text-5xl">
@@ -128,7 +128,7 @@ export default function HistoricoPage() {
                       {formatPct(crecimientoMes)} en el mes
                     </span>
                   )}
-                  <span className="text-zinc-500">
+                  <span className="text-subtle">
                     Apertura {formatMonedaCompact(summary.netWorthOpen, "ARS")}
                   </span>
                 </div>
@@ -182,10 +182,10 @@ export default function HistoricoPage() {
             <BentoCard className="sm:col-span-2 lg:col-span-4 lg:row-span-2">
               <div className="flex h-full flex-col">
                 <div className="flex items-center justify-between">
-                  <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                  <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-subtle">
                     Evolución del patrimonio · {label}
                   </span>
-                  <span className="flex items-center gap-1.5 text-[0.7rem] text-zinc-500">
+                  <span className="flex items-center gap-1.5 text-[0.7rem] text-subtle">
                     <span className="size-1.5 rounded-full bg-[#60a5fa]" />
                     Net worth diario
                   </span>
@@ -199,7 +199,7 @@ export default function HistoricoPage() {
             {/* Ingresos vs Gastos */}
             <BentoCard className="sm:col-span-2 lg:col-span-2">
               <div className="flex h-full flex-col">
-                <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-subtle">
                   Ingresos vs Gastos
                 </span>
                 <div className="mt-3 min-h-0 flex-1">

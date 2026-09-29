@@ -74,7 +74,7 @@ export default function HabitosPage() {
 
       <section>
         {habitos === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <p className="text-sm text-subtle">Cargando…</p>
         ) : habitos.length === 0 ? (
           <EmptyState>Todavía no creaste hábitos.</EmptyState>
         ) : (
@@ -116,7 +116,7 @@ export default function HabitosPage() {
                       type="button"
                       onClick={() => h.id != null && eliminar(h.id, h.nombre)}
                       aria-label="Eliminar hábito"
-                      className="text-zinc-600 transition-colors hover:text-red-400"
+                      className="text-subtle transition-colors hover:text-red-400"
                     >
                       <X size={15} />
                     </button>

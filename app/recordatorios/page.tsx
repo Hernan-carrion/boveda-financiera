@@ -63,7 +63,7 @@ export default function RecordatoriosPage() {
       <section>
         <SectionTitle>{`Recordatorios (${ordenados.length})`}</SectionTitle>
         {recordatorios === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <p className="text-sm text-subtle">Cargando…</p>
         ) : ordenados.length === 0 ? (
           <EmptyState>Todavía no cargaste recordatorios.</EmptyState>
         ) : (
@@ -81,10 +81,10 @@ export default function RecordatoriosPage() {
                       !r.activo && "opacity-50",
                     )}
                   >
-                    <Bell size={16} className="shrink-0 text-zinc-500" />
+                    <Bell size={16} className="shrink-0 text-subtle" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm text-zinc-200">{r.titulo}</p>
-                      <p className="text-xs text-zinc-500">
+                      <p className="text-xs text-subtle">
                         {r.categoria}
                         {r.repetir !== "ninguna" && <> · {REPETIR_LABEL[r.repetir]}</>}
                         {!r.activo && <> · pausado</>}

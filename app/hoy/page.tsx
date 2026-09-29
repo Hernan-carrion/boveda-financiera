@@ -57,7 +57,7 @@ export default function HoyPage() {
       <section>
         <SectionTitle>Tareas de hoy</SectionTitle>
         {tareas === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <p className="text-sm text-subtle">Cargando…</p>
         ) : tareasHoy.length === 0 ? (
           <EmptyState>
             Sin tareas vencidas ni para hoy.{" "}
@@ -79,7 +79,7 @@ export default function HoyPage() {
                     type="button"
                     onClick={() => t.id != null && completarTarea(t.id, true)}
                     aria-label="Marcar hecha"
-                    className="shrink-0 text-zinc-500 transition-colors hover:text-emerald-400"
+                    className="shrink-0 text-subtle transition-colors hover:text-emerald-400"
                   >
                     <Circle size={18} />
                   </button>
@@ -104,7 +104,7 @@ export default function HoyPage() {
       <section>
         <SectionTitle>Hábitos de hoy</SectionTitle>
         {habitos === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <p className="text-sm text-subtle">Cargando…</p>
         ) : habitos.length === 0 ? (
           <EmptyState>
             Todavía no creaste hábitos.{" "}
@@ -141,7 +141,7 @@ export default function HoyPage() {
                   {hecho ? (
                     <CheckSquare size={18} style={{ color: h.color_hex }} className="shrink-0" />
                   ) : (
-                    <Circle size={18} className="shrink-0 text-zinc-500" />
+                    <Circle size={18} className="shrink-0 text-subtle" />
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-zinc-200">{h.nombre}</p>
@@ -162,7 +162,7 @@ export default function HoyPage() {
       <section>
         <SectionTitle>Recordatorios próximos</SectionTitle>
         {recordatorios === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <p className="text-sm text-subtle">Cargando…</p>
         ) : recordatoriosProximos.length === 0 ? (
           <EmptyState>
             Sin recordatorios cargados.{" "}
@@ -180,10 +180,10 @@ export default function HoyPage() {
                   key={r.id}
                   className="flex items-center gap-3 bg-zinc-900/40 px-4 py-3"
                 >
-                  <Bell size={16} className="shrink-0 text-zinc-500" />
+                  <Bell size={16} className="shrink-0 text-subtle" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-zinc-200">{r.titulo}</p>
-                    <p className="text-xs text-zinc-500">{r.categoria}</p>
+                    <p className="text-xs text-subtle">{r.categoria}</p>
                   </div>
                   <span
                     className={cn(

@@ -53,7 +53,7 @@ export default function PresupuestosPage() {
         </div>
 
         {cargando ? (
-          <Card className="text-sm text-zinc-500">Cargando…</Card>
+          <Card className="text-sm text-subtle">Cargando…</Card>
         ) : avances.length === 0 ? (
           <EmptyState>
             No hay presupuestos para este mes. Creá uno abajo.
@@ -64,7 +64,7 @@ export default function PresupuestosPage() {
               <Card key={a.presupuesto.id} className="flex flex-col gap-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center gap-2 font-medium text-zinc-200">
-                    <Target size={15} className="text-zinc-500" />
+                    <Target size={15} className="text-subtle" />
                     {a.presupuesto.categoria}
                   </span>
                   <span
@@ -82,7 +82,7 @@ export default function PresupuestosPage() {
                   </span>
                 </div>
                 <ProgressBar pct={a.pct} estado={a.estado} />
-                <div className="flex items-center justify-between text-xs text-zinc-500">
+                <div className="flex items-center justify-between text-xs text-subtle">
                   <span>{a.pct.toFixed(0)}% consumido</span>
                   <span className="flex items-center gap-3">
                     <span>
@@ -96,7 +96,7 @@ export default function PresupuestosPage() {
                         a.presupuesto.id != null &&
                         bovedaDB.presupuestos.delete(a.presupuesto.id)
                       }
-                      className="text-zinc-600 transition-colors hover:text-red-400"
+                      className="text-subtle transition-colors hover:text-red-400"
                       aria-label="Borrar presupuesto"
                     >
                       <Trash2 size={14} />

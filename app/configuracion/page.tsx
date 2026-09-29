@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+import Link from "next/link";
 import {
   Download,
   Upload,
@@ -139,7 +140,7 @@ export default function ConfiguracionPage() {
               Reiniciar movimientos
             </button>
           </div>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-subtle">
             &quot;Reiniciar movimientos&quot; borra solo el historial de
             transacciones — cuentas, tarjetas, saldos y todo lo demás quedan
             igual.
@@ -305,9 +306,9 @@ function TarifasTurnoSection() {
       <Card className="flex flex-col gap-3">
         <p className="text-sm text-zinc-400">
           Cuánto vale cada día trabajado según el turno. Se usan en{" "}
-          <a href="/sueldo" className="underline hover:text-zinc-300">
+          <Link href="/sueldo" className="font-medium text-accent underline-offset-4 hover:underline">
             Cuenta sueldo
-          </a>{" "}
+          </Link>{" "}
           para marcar días y para la estimación mensual — es sólo una
           referencia, no mueve plata de ninguna cuenta.
         </p>
@@ -544,7 +545,7 @@ function AjusteSaldoRow({
     <Card className="flex flex-wrap items-center gap-3">
       <div className="min-w-40">
         <p className="text-sm font-medium text-zinc-200">{cuenta.nombre}</p>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-subtle">
           Actual: {formatMoneda(cuenta.saldo, cuenta.moneda)}
         </p>
       </div>

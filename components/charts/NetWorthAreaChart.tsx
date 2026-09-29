@@ -26,7 +26,7 @@ export default function NetWorthAreaChart({
 }) {
   if (data.length === 0) {
     return (
-      <div className="grid h-full min-h-[6rem] place-items-center text-xs text-zinc-600">
+      <div className="grid h-full min-h-[6rem] place-items-center text-xs text-subtle">
         Sin datos para este mes
       </div>
     );

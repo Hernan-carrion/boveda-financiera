@@ -1,14 +1,18 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
+/*
+ * Controles compartidos. Alto mínimo de 44px (objetivo táctil cómodo en
+ * mobile), foco con anillo esmeralda y feedback de presión sin mover el layout.
+ */
 export const inputCls =
-  "w-full rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-100 outline-none transition-colors placeholder:text-zinc-600 focus:border-zinc-500";
+  "min-h-11 w-full rounded-lg border border-line bg-zinc-900/70 px-3 py-2 text-base text-zinc-100 outline-none transition-colors duration-150 placeholder:text-subtle hover:border-line-strong focus:border-emerald-400/70 focus:ring-2 focus:ring-emerald-400/20 focus-visible:outline-none sm:text-sm";
 
 export const btnCls =
-  "inline-flex items-center justify-center gap-1.5 rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 transition-[background-color,transform] duration-150 hover:bg-white active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40";
 
 export const btnGhostCls =
-  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-line-strong px-4 py-2 text-sm font-medium text-zinc-200 transition-[background-color,border-color,transform] duration-150 hover:border-zinc-500 hover:bg-white/5 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40";
 
 export function Card({
   children,
@@ -20,7 +24,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 shadow-sm shadow-black/20 transition-colors hover:border-zinc-700/80",
+        "rounded-2xl border border-line bg-surface p-5 shadow-lg shadow-black/20 transition-colors duration-200 hover:border-line-strong/80",
         className,
       )}
     >
@@ -31,8 +35,8 @@ export function Card({
 
 export function SectionTitle({ children }: { children: ReactNode }) {
   return (
-    <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-      <span className="h-3 w-0.5 rounded-full bg-emerald-500/70" aria-hidden />
+    <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold text-zinc-100">
+      <span className="h-4 w-1 rounded-full bg-accent" aria-hidden />
       {children}
     </h2>
   );
@@ -46,7 +50,7 @@ export function Field({
   children: ReactNode;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-xs text-zinc-400">
+    <label className="flex flex-col gap-1.5 text-xs font-medium text-muted">
       {label}
       {children}
     </label>
@@ -55,7 +59,7 @@ export function Field({
 
 export function EmptyState({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 p-6 text-center text-sm text-zinc-500">
+    <p className="rounded-2xl border border-dashed border-line-strong/70 bg-zinc-900/30 p-6 text-center text-sm text-muted">
       {children}
     </p>
   );

@@ -2,14 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ChevronLeft, ChevronRight, Flame, Plus, X } from "lucide-react";
+import { Flame, Plus, X } from "lucide-react";
 import { bovedaDB } from "@/lib/db";
 import { crearHabito, borrarHabito, marcarHabito } from "@/lib/actions";
 import { monthKey, formatMonthLabel, type MonthKey } from "@/lib/historical";
 import { diasDelMes, calcularRacha, mesVecino } from "@/lib/habitos";
 import { cn } from "@/lib/utils";
 import RuedaHabitos from "@/components/RuedaHabitos";
-import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls } from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, PageHeader, MonthStepper, LoadingState } from "@/components/ui";
 
 const COLORES_HABITO = ["#a78bfa", "#34d399", "#38bdf8", "#fbbf24", "#f87171", "#fb923c"];
 
@@ -44,37 +44,25 @@ export default function HabitosPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/habitos"
+        description="Marcá cada día y seguí tus rachas mes a mes."
+        actions={
+          <MonthStepper
+            label={formatMonthLabel(mes)}
+            onPrev={() => setMes((m) => mesVecino(m, -1))}
+            onNext={() => setMes((m) => mesVecino(m, 1))}
+          />
+        }
+      />
       <section>
-        <div className="mb-3 flex items-center justify-between">
-          <SectionTitle>Hábitos</SectionTitle>
-          <div className="inline-flex items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900/50 p-1">
-            <button
-              type="button"
-              aria-label="Mes anterior"
-              className="grid size-8 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100"
-              onClick={() => setMes((m) => mesVecino(m, -1))}
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <span className="min-w-[8.5rem] text-center text-sm font-medium text-zinc-100">
-              {formatMonthLabel(mes)}
-            </span>
-            <button
-              type="button"
-              aria-label="Mes siguiente"
-              className="grid size-8 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100"
-              onClick={() => setMes((m) => mesVecino(m, 1))}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
+        <SectionTitle>Nuevo hábito</SectionTitle>
         <NuevoHabitoForm />
       </section>
 
       <section>
         {habitos === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <LoadingState />
         ) : habitos.length === 0 ? (
           <EmptyState>Todavía no creaste hábitos.</EmptyState>
         ) : (
@@ -99,7 +87,7 @@ export default function HabitosPage() {
                 return (
                   <div
                     key={h.id}
-                    className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-2.5"
+                    className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-2.5"
                   >
                     <span
                       className="size-3 shrink-0 rounded-full"
@@ -116,7 +104,7 @@ export default function HabitosPage() {
                       type="button"
                       onClick={() => h.id != null && eliminar(h.id, h.nombre)}
                       aria-label="Eliminar hábito"
-                      className="text-zinc-600 transition-colors hover:text-red-400"
+                      className="text-subtle transition-colors hover:text-red-400"
                     >
                       <X size={15} />
                     </button>

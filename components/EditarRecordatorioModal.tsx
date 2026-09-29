@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import type { Recordatorio, RepeticionRecordatorio } from "@/lib/db";
 import { actualizarRecordatorio, borrarRecordatorio } from "@/lib/actions";
 import { CATEGORIAS_RECORDATORIO } from "@/lib/recordatorios";
 import { inputCls, btnCls, Field } from "@/components/ui";
+import Modal from "@/components/Modal";
 
 /** Mismo patrón que EditarMovimientoModal / EditarSuscripcionModal. */
 export default function EditarRecordatorioModal({
@@ -17,40 +17,9 @@ export default function EditarRecordatorioModal({
   onClose: () => void;
 }) {
   return (
-    <AnimatePresence>
-      {recordatorio && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        >
-          <motion.div
-            className="w-full max-w-md rounded-t-2xl border border-white/10 bg-zinc-900/70 p-5 shadow-2xl backdrop-blur-xl sm:rounded-2xl"
-            initial={{ y: 40, opacity: 0, scale: 0.98 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 40, opacity: 0, scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 300, damping: 28 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-start justify-between">
-              <p className="text-sm font-medium text-zinc-100">Editar recordatorio</p>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100"
-                aria-label="Cerrar"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <RecordatorioForm key={recordatorio.id} recordatorio={recordatorio} onClose={onClose} />
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <Modal open={!!recordatorio} title="Editar recordatorio" onClose={onClose}>
+      {recordatorio && <RecordatorioForm key={recordatorio.id} recordatorio={recordatorio} onClose={onClose} />}
+    </Modal>
   );
 }
 

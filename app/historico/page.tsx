@@ -19,6 +19,7 @@ import BentoCard from "@/components/historico/BentoCard";
 import StatTile from "@/components/historico/StatTile";
 import NetWorthAreaChart from "@/components/charts/NetWorthAreaChart";
 import IncomeExpenseChart from "@/components/charts/IncomeExpenseChart";
+import { PageHeader } from "@/components/ui";
 
 function pctChange(cur: number, prev: number): number | null {
   if (!Number.isFinite(prev) || prev === 0) return null;
@@ -83,21 +84,17 @@ export default function HistoricoPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-zinc-50">
-            Resúmenes mensuales
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Consolidado histórico de patrimonio y flujo de caja · ARS
-          </p>
-        </div>
-        <MonthYearSelector
-          value={selected}
-          months={months}
-          onChange={setSelected}
-        />
-      </div>
+      <PageHeader
+        href="/historico"
+        description="Consolidado histórico de patrimonio y flujo de caja · ARS"
+        actions={
+          <MonthYearSelector
+            value={selected}
+            months={months}
+            onChange={setSelected}
+          />
+        }
+      />
 
       <div className="rounded-3xl border border-white/5 bg-[#08080c] p-3 sm:p-5 [background-image:radial-gradient(110%_80%_at_0%_0%,rgba(59,130,246,0.08),transparent_55%),radial-gradient(90%_70%_at_100%_0%,rgba(74,222,128,0.05),transparent_45%)]">
         {cargando ? (
@@ -110,7 +107,7 @@ export default function HistoricoPage() {
               className="sm:col-span-2 lg:col-span-2 lg:row-span-2"
             >
               <div className="flex h-full flex-col">
-                <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-subtle">
                   Patrimonio neto · cierre {label}
                 </span>
                 <p className="mt-3 font-tech text-[2.5rem] leading-none text-[#60a5fa] sm:text-5xl">
@@ -128,7 +125,7 @@ export default function HistoricoPage() {
                       {formatPct(crecimientoMes)} en el mes
                     </span>
                   )}
-                  <span className="text-zinc-500">
+                  <span className="text-subtle">
                     Apertura {formatMonedaCompact(summary.netWorthOpen, "ARS")}
                   </span>
                 </div>
@@ -182,10 +179,10 @@ export default function HistoricoPage() {
             <BentoCard className="sm:col-span-2 lg:col-span-4 lg:row-span-2">
               <div className="flex h-full flex-col">
                 <div className="flex items-center justify-between">
-                  <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                  <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-subtle">
                     Evolución del patrimonio · {label}
                   </span>
-                  <span className="flex items-center gap-1.5 text-[0.7rem] text-zinc-500">
+                  <span className="flex items-center gap-1.5 text-[0.7rem] text-subtle">
                     <span className="size-1.5 rounded-full bg-[#60a5fa]" />
                     Net worth diario
                   </span>
@@ -199,7 +196,7 @@ export default function HistoricoPage() {
             {/* Ingresos vs Gastos */}
             <BentoCard className="sm:col-span-2 lg:col-span-2">
               <div className="flex h-full flex-col">
-                <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-zinc-500">
+                <span className="font-display text-[0.7rem] font-medium uppercase tracking-[0.14em] text-subtle">
                   Ingresos vs Gastos
                 </span>
                 <div className="mt-3 min-h-0 flex-1">

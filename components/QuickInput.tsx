@@ -60,7 +60,7 @@ export default function QuickInput() {
       </form>
 
       {preview && (
-        <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950/60 p-4">
+        <div className="mt-4 rounded-lg border border-line bg-zinc-950/60 p-4">
           <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
             <Dato label="Monto" valor={formatMoneda(preview.monto, preview.moneda)} />
             <Dato label="Cuenta" valor={preview.cuenta} />
@@ -104,7 +104,7 @@ export default function QuickInput() {
 function Dato({ label, valor }: { label: string; valor: string }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className="text-xs uppercase tracking-wide text-subtle">{label}</p>
       <p className="mt-0.5 font-medium capitalize text-zinc-100">{valor}</p>
     </div>
   );

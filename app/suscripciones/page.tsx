@@ -9,15 +9,7 @@ import { CATEGORIAS_EGRESO } from "@/lib/categorizer";
 import { procesarSuscripcionesVencidas } from "@/lib/actions";
 import { formatMoneda, periodoActual } from "@/lib/utils";
 import EditarSuscripcionModal from "@/components/EditarSuscripcionModal";
-import {
-  Card,
-  SectionTitle,
-  Field,
-  EmptyState,
-  inputCls,
-  btnCls,
-  btnGhostCls,
-} from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, btnGhostCls, PageHeader, LoadingState } from "@/components/ui";
 
 export default function SuscripcionesPage() {
   const suscripciones = useLiveQuery(
@@ -44,17 +36,21 @@ export default function SuscripcionesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <SectionTitle>Suscripciones</SectionTitle>
-          <button onClick={procesarAhora} className={btnGhostCls}>
-            <Play size={15} />
+      <PageHeader
+        href="/suscripciones"
+        description="Gastos fijos que se debitan solos cada mes."
+        actions={
+          <button type="button" onClick={procesarAhora} className={btnGhostCls}>
+            <Play size={15} aria-hidden />
             Procesar cobros
           </button>
-        </div>
+        }
+      />
+      <section>
+        <SectionTitle>Activas</SectionTitle>
 
         {suscripciones === undefined ? (
-          <Card className="text-sm text-zinc-500">Cargando…</Card>
+          <LoadingState />
         ) : suscripciones.length === 0 ? (
           <EmptyState>Todavía no cargaste suscripciones.</EmptyState>
         ) : (
@@ -66,12 +62,12 @@ export default function SuscripcionesPage() {
                   key={s.id}
                   className="flex flex-wrap items-center gap-x-4 gap-y-2"
                 >
-                  <Repeat size={16} className="text-zinc-500" />
+                  <Repeat size={16} className="text-subtle" />
                   <div className="min-w-40 flex-1">
                     <p className="text-sm font-medium text-zinc-200">
                       {s.descripcion}
                     </p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-subtle">
                       Día {s.dia_cobro} · {nombreCuenta(s.cuenta_id)} · {s.categoria}
                     </p>
                   </div>
@@ -104,7 +100,7 @@ export default function SuscripcionesPage() {
                   <button
                     type="button"
                     onClick={() => setEditando(s)}
-                    className="text-zinc-600 transition-colors hover:text-zinc-200"
+                    className="text-subtle transition-colors hover:text-zinc-200"
                     aria-label="Editar suscripción"
                   >
                     <Pencil size={15} />

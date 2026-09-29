@@ -4,6 +4,7 @@ import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import AppInit from "@/components/AppInit";
 import NavBar from "@/components/NavBar";
+import ToneScope from "@/components/ToneScope";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +37,7 @@ const jetbrainsMono = JetBrains_Mono({
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 export const metadata: Metadata = {
-  title: "👣 Huella",
+  title: "Huella",
   description:
     "Gestión de finanzas personales 100% local: cuentas, tarjetas y préstamos, multimoneda y offline.",
   manifest: `${BASE}/manifest.json`,
@@ -75,14 +76,20 @@ export default function RootLayout({
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100">
+      <body className="min-h-full text-zinc-100">
         <NavBar />
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
-          {children}
-        </main>
-        <footer className="border-t border-zinc-800 px-4 py-4 text-center text-xs text-zinc-600">
-          Huella · datos guardados sólo en este dispositivo (IndexedDB)
-        </footer>
+        <div className="flex min-h-dvh flex-col lg:pl-64">
+          <main
+            id="contenido"
+            tabIndex={-1}
+            className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none sm:px-6 lg:px-10 lg:py-10"
+          >
+            <ToneScope>{children}</ToneScope>
+          </main>
+          <footer className="border-t border-line px-4 py-4 text-center text-xs text-subtle">
+            Huella · datos guardados sólo en este dispositivo (IndexedDB)
+          </footer>
+        </div>
         <ServiceWorkerRegister />
         <AppInit />
       </body>

@@ -13,7 +13,7 @@ import {
   formatMonthLabel,
 } from "@/lib/historical";
 import { formatMoneda } from "@/lib/utils";
-import { Card, SectionTitle, btnCls } from "@/components/ui";
+import { Card, SectionTitle, btnCls, PageHeader, LoadingState } from "@/components/ui";
 import HistoryLineChart, {
   type HistoryPoint,
 } from "@/components/charts/HistoryLineChart";
@@ -80,23 +80,27 @@ export default function EstadisticasPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <SectionTitle>Estadísticas</SectionTitle>
+      <PageHeader
+        href="/estadisticas"
+        description="Evolución de tu saldo y en qué se va la plata."
+        actions={
           <button
+            type="button"
             onClick={exportarCSV}
             disabled={descargando || cargando}
+            aria-busy={descargando}
             className={btnCls}
           >
-            <Download size={16} />
+            <Download size={16} aria-hidden />
             {descargando ? "Generando…" : "Exportar a CSV"}
           </button>
-        </div>
-
+        }
+      />
+      <section>
         <SectionTitle>Evolución histórica (ARS)</SectionTitle>
         <Card>
           {cargando ? (
-            <p className="text-sm text-zinc-500">Cargando…</p>
+            <LoadingState />
           ) : (
             <HistoryLineChart data={serie} />
           )}
@@ -107,11 +111,11 @@ export default function EstadisticasPage() {
         <SectionTitle>Gastos del mes por categoría</SectionTitle>
         <Card>
           {cargando ? (
-            <p className="text-sm text-zinc-500">Cargando…</p>
+            <LoadingState />
           ) : (
             <>
               <CategoryPieChart data={porCategoria} />
-              <ul className="mt-4 divide-y divide-zinc-800 text-sm">
+              <ul className="mt-4 divide-y divide-line text-sm">
                 {porCategoria.map((c) => (
                   <li
                     key={c.name}

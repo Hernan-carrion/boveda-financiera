@@ -9,7 +9,7 @@ import { completarTarea, marcarHabito } from "@/lib/actions";
 import { diasHasta, hoyISO } from "@/lib/recordatorios";
 import { calcularRacha } from "@/lib/habitos";
 import { cn } from "@/lib/utils";
-import { SectionTitle, EmptyState } from "@/components/ui";
+import { SectionTitle, EmptyState, PageHeader, LoadingState, inlineLinkCls } from "@/components/ui";
 
 /**
  * Agenda del día: junta tareas vencidas/de hoy, hábitos sin marcar y
@@ -54,32 +54,36 @@ export default function HoyPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/hoy"
+        description="Lo que vence hoy: tareas, hábitos y recordatorios."
+      />
       <section>
         <SectionTitle>Tareas de hoy</SectionTitle>
         {tareas === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <LoadingState />
         ) : tareasHoy.length === 0 ? (
           <EmptyState>
             Sin tareas vencidas ni para hoy.{" "}
-            <Link href="/tareas" className="underline hover:text-zinc-300">
+            <Link href="/tareas" className={inlineLinkCls}>
               Ver todas
             </Link>
             .
           </EmptyState>
         ) : (
-          <ul className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
             {tareasHoy.map((t) => {
               const dias = t.fecha_vencimiento ? diasHasta(t.fecha_vencimiento) : null;
               return (
                 <li
                   key={t.id}
-                  className="flex items-center gap-3 bg-zinc-900/40 px-4 py-3"
+                  className="flex items-center gap-3 bg-surface px-4 py-3"
                 >
                   <button
                     type="button"
                     onClick={() => t.id != null && completarTarea(t.id, true)}
                     aria-label="Marcar hecha"
-                    className="shrink-0 text-zinc-500 transition-colors hover:text-emerald-400"
+                    className="shrink-0 text-subtle transition-colors hover:text-emerald-400"
                   >
                     <Circle size={18} />
                   </button>
@@ -104,11 +108,11 @@ export default function HoyPage() {
       <section>
         <SectionTitle>Hábitos de hoy</SectionTitle>
         {habitos === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <LoadingState />
         ) : habitos.length === 0 ? (
           <EmptyState>
             Todavía no creaste hábitos.{" "}
-            <Link href="/habitos" className="underline hover:text-zinc-300">
+            <Link href="/habitos" className={inlineLinkCls}>
               Crear uno
             </Link>
             .
@@ -130,7 +134,7 @@ export default function HoyPage() {
                   onClick={() => h.id != null && marcarHabito(h.id, hoy, !hecho)}
                   className={cn(
                     "flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors",
-                    !hecho && "border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800/40",
+                    !hecho && "border-line bg-surface hover:bg-zinc-800/40",
                   )}
                   style={
                     hecho
@@ -141,7 +145,7 @@ export default function HoyPage() {
                   {hecho ? (
                     <CheckSquare size={18} style={{ color: h.color_hex }} className="shrink-0" />
                   ) : (
-                    <Circle size={18} className="shrink-0 text-zinc-500" />
+                    <Circle size={18} className="shrink-0 text-subtle" />
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-zinc-200">{h.nombre}</p>
@@ -162,28 +166,28 @@ export default function HoyPage() {
       <section>
         <SectionTitle>Recordatorios próximos</SectionTitle>
         {recordatorios === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <LoadingState />
         ) : recordatoriosProximos.length === 0 ? (
           <EmptyState>
             Sin recordatorios cargados.{" "}
-            <Link href="/recordatorios" className="underline hover:text-zinc-300">
+            <Link href="/recordatorios" className={inlineLinkCls}>
               Crear uno
             </Link>
             .
           </EmptyState>
         ) : (
-          <ul className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
             {recordatoriosProximos.map((r) => {
               const dias = diasHasta(r.fecha);
               return (
                 <li
                   key={r.id}
-                  className="flex items-center gap-3 bg-zinc-900/40 px-4 py-3"
+                  className="flex items-center gap-3 bg-surface px-4 py-3"
                 >
-                  <Bell size={16} className="shrink-0 text-zinc-500" />
+                  <Bell size={16} className="shrink-0 text-subtle" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm text-zinc-200">{r.titulo}</p>
-                    <p className="text-xs text-zinc-500">{r.categoria}</p>
+                    <p className="text-xs text-subtle">{r.categoria}</p>
                   </div>
                   <span
                     className={cn(

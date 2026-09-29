@@ -12,14 +12,7 @@ import {
 } from "@/lib/actions";
 import { getCotizacionUSD } from "@/lib/config";
 import { formatMoneda, formatMonedaCompact, formatFecha } from "@/lib/utils";
-import {
-  Card,
-  SectionTitle,
-  Field,
-  EmptyState,
-  inputCls,
-  btnCls,
-} from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, PageHeader, LoadingState } from "@/components/ui";
 
 const TIPOS_DOLAR = ["MEP", "Blue", "CCL", "Oficial", "Cripto"];
 
@@ -52,9 +45,13 @@ export default function InversionesPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/inversiones"
+        description="Cambio de divisas y compras de dólares con precio promedio."
+      />
       <section>
         <SectionTitle>Cambio de divisas</SectionTitle>
-        <p className="mb-3 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-subtle">
           Mueve dinero real entre dos de tus cuentas: sale de la cuenta de
           origen y entra a la de destino ya convertido con la cotización que
           cargues. Si compras dólares, también queda registrada la compra acá
@@ -65,7 +62,7 @@ export default function InversionesPage() {
 
       <section>
         <SectionTitle>Registrar compra de dólares (sólo cartera)</SectionTitle>
-        <p className="mb-3 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-subtle">
           Para llevar el precio promedio de compra sin mover plata de ninguna
           cuenta (por ejemplo, dólares que ya tenías antes de usar la app).
         </p>
@@ -76,7 +73,7 @@ export default function InversionesPage() {
         <SectionTitle>Tenencia de dólares</SectionTitle>
         <div className="grid gap-3 sm:grid-cols-3">
           <Card>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
+            <p className="text-xs uppercase tracking-wide text-subtle">
               USD comprados (activos)
             </p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-50">
@@ -84,7 +81,7 @@ export default function InversionesPage() {
             </p>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
+            <p className="text-xs uppercase tracking-wide text-subtle">
               ARS invertidos
             </p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-50">
@@ -92,7 +89,7 @@ export default function InversionesPage() {
             </p>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
+            <p className="text-xs uppercase tracking-wide text-subtle">
               Precio promedio de compra
             </p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-50">
@@ -105,11 +102,11 @@ export default function InversionesPage() {
       <section>
         <SectionTitle>Compras registradas</SectionTitle>
         {inversiones === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <LoadingState />
         ) : compras.length === 0 ? (
           <EmptyState>Todavía no registraste compras de dólares.</EmptyState>
         ) : (
-          <ul className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
             {compras.map((c) => {
               const totalOperacion =
                 c.costo_ars ??
@@ -117,26 +114,26 @@ export default function InversionesPage() {
               return (
                 <li
                   key={c.id}
-                  className="flex flex-wrap items-center gap-x-6 gap-y-2 bg-zinc-900/40 px-4 py-3 text-sm"
+                  className="flex flex-wrap items-center gap-x-6 gap-y-2 bg-surface px-4 py-3 text-sm"
                 >
                   <div className="min-w-32">
                     <p className="font-medium text-zinc-200">
                       {c.tipo}
                       {c.estado === "cerrada" && (
-                        <span className="ml-2 text-xs text-zinc-500">
+                        <span className="ml-2 text-xs text-subtle">
                           (cerrada)
                         </span>
                       )}
                     </p>
                     {c.fecha && (
-                      <p className="text-xs text-zinc-500">
+                      <p className="text-xs text-subtle">
                         {formatFecha(c.fecha)}
                       </p>
                     )}
                   </div>
 
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-500">
+                    <p className="text-xs uppercase tracking-wide text-subtle">
                       Monto adquirido
                     </p>
                     <p className="tabular-nums text-emerald-400">
@@ -145,7 +142,7 @@ export default function InversionesPage() {
                   </div>
 
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-500">
+                    <p className="text-xs uppercase tracking-wide text-subtle">
                       Cotización compra
                     </p>
                     <p className="tabular-nums text-zinc-200">
@@ -154,7 +151,7 @@ export default function InversionesPage() {
                   </div>
 
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-500">
+                    <p className="text-xs uppercase tracking-wide text-subtle">
                       Total ARS invertidos
                     </p>
                     <p className="tabular-nums text-zinc-200">
@@ -169,7 +166,7 @@ export default function InversionesPage() {
                       <button
                         type="button"
                         onClick={() => cerrarInversion(c.id!)}
-                        className="text-xs text-zinc-500 hover:text-zinc-200"
+                        className="text-xs text-subtle hover:text-zinc-200"
                       >
                         Cerrar
                       </button>
@@ -178,7 +175,7 @@ export default function InversionesPage() {
                       <button
                         type="button"
                         onClick={() => borrarInversion(c.id!)}
-                        className="text-zinc-600 hover:text-red-400"
+                        className="text-subtle hover:text-red-400"
                         aria-label="Borrar compra"
                       >
                         <X size={15} />
@@ -195,15 +192,15 @@ export default function InversionesPage() {
       {otras.length > 0 && (
         <section>
           <SectionTitle>Otras inversiones</SectionTitle>
-          <ul className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
             {otras.map((i) => (
               <li
                 key={i.id}
-                className="flex items-center justify-between bg-zinc-900/40 px-4 py-3 text-sm"
+                className="flex items-center justify-between bg-surface px-4 py-3 text-sm"
               >
                 <span className="text-zinc-200">
                   {i.nombre}{" "}
-                  <span className="text-xs text-zinc-500">({i.tipo})</span>
+                  <span className="text-xs text-subtle">({i.tipo})</span>
                 </span>
                 <span className="tabular-nums text-zinc-300">
                   {formatMoneda(i.capital_inicial, i.moneda)}
@@ -353,8 +350,8 @@ function CambioDivisaForm() {
 
       {origen && destino && origen.moneda !== destino.moneda && (
         <div className="mt-3 flex items-center gap-2 text-sm">
-          <ArrowRightLeft size={15} className="text-zinc-500" />
-          <span className="text-zinc-500">
+          <ArrowRightLeft size={15} className="text-subtle" />
+          <span className="text-subtle">
             {operacion ? `${operacion}:` : ""}
           </span>
           <span className="font-semibold tabular-nums text-zinc-100">
@@ -456,8 +453,8 @@ function CompraDolaresForm() {
       </form>
 
       <div className="mt-3 flex items-center gap-2 text-sm">
-        <Coins size={15} className="text-zinc-500" />
-        <span className="text-zinc-500">Costo de la operación:</span>
+        <Coins size={15} className="text-subtle" />
+        <span className="text-subtle">Costo de la operación:</span>
         <span className="font-semibold tabular-nums text-zinc-100">
           {costoArs > 0 ? formatMoneda(costoArs, "ARS") : "—"}
         </span>

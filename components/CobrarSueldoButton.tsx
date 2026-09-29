@@ -68,7 +68,7 @@ export default function CobrarSueldoButton() {
       >
         {cobrando ? "Acreditando…" : "Cobrar"}
       </button>
-      <span className="text-xs text-zinc-500">
+      <span className="text-xs text-subtle">
         {montoConfigurado
           ? "a Mercado Pago · podés cambiar el monto antes de cobrar"
           : "a Mercado Pago · configurá un monto fijo en Configuración"}

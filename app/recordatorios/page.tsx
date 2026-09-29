@@ -8,7 +8,7 @@ import { crearRecordatorio } from "@/lib/actions";
 import { CATEGORIAS_RECORDATORIO, TIPOS_DOCUMENTO, diasHasta } from "@/lib/recordatorios";
 import { cn } from "@/lib/utils";
 import EditarRecordatorioModal from "@/components/EditarRecordatorioModal";
-import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls } from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, PageHeader, LoadingState } from "@/components/ui";
 
 const REPETIR_LABEL: Record<RepeticionRecordatorio, string> = {
   ninguna: "No se repite",
@@ -35,6 +35,10 @@ export default function RecordatoriosPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/recordatorios"
+        description="Avisos con fecha, categoría y notificación."
+      />
       <section>
         <SectionTitle>Filtros</SectionTitle>
         <Card className="grid gap-3 sm:grid-cols-3">
@@ -63,11 +67,11 @@ export default function RecordatoriosPage() {
       <section>
         <SectionTitle>{`Recordatorios (${ordenados.length})`}</SectionTitle>
         {recordatorios === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <LoadingState />
         ) : ordenados.length === 0 ? (
           <EmptyState>Todavía no cargaste recordatorios.</EmptyState>
         ) : (
-          <ul className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
             {ordenados.map((r) => {
               const dias = diasHasta(r.fecha);
               const vencido = dias < 0 && r.repetir === "ninguna";
@@ -77,14 +81,14 @@ export default function RecordatoriosPage() {
                     type="button"
                     onClick={() => setEditando(r)}
                     className={cn(
-                      "flex w-full flex-wrap items-center gap-x-4 gap-y-1 bg-zinc-900/40 px-4 py-3 text-left transition-colors hover:bg-zinc-800/40",
+                      "flex w-full flex-wrap items-center gap-x-4 gap-y-1 bg-surface px-4 py-3 text-left transition-colors hover:bg-zinc-800/40",
                       !r.activo && "opacity-50",
                     )}
                   >
-                    <Bell size={16} className="shrink-0 text-zinc-500" />
+                    <Bell size={16} className="shrink-0 text-subtle" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm text-zinc-200">{r.titulo}</p>
-                      <p className="text-xs text-zinc-500">
+                      <p className="text-xs text-subtle">
                         {r.categoria}
                         {r.repetir !== "ninguna" && <> · {REPETIR_LABEL[r.repetir]}</>}
                         {!r.activo && <> · pausado</>}

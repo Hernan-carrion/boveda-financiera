@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ChevronLeft, ChevronRight, Wallet, Percent, Briefcase } from "lucide-react";
+import { Wallet, Percent, Briefcase } from "lucide-react";
 import { bovedaDB } from "@/lib/db";
 import { CATEGORIA_COMISION, CATEGORIA_TRABAJO_INDEPENDIENTE } from "@/lib/categorizer";
 import { getTarifasTurno } from "@/lib/config";
@@ -17,13 +17,13 @@ import {
 } from "@/lib/sueldo";
 import { marcarDiaTrabajado } from "@/lib/actions";
 import { formatMoneda, formatPct, cn } from "@/lib/utils";
-import { Card, SectionTitle } from "@/components/ui";
+import { Card, SectionTitle, PageHeader, MonthStepper } from "@/components/ui";
 import IngresoExtraButton from "@/components/IngresoExtraButton";
 
 const NOMBRES_DIA = ["D", "L", "M", "M", "J", "V", "S"];
 
 const colorCelda: Record<string, string> = {
-  ninguno: "border-zinc-800 bg-zinc-900/40 text-zinc-500 hover:bg-zinc-800/60",
+  ninguno: "border-line bg-surface text-subtle hover:bg-zinc-800/60",
   medio: "border-amber-500/40 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25",
   completo:
     "border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25",
@@ -85,32 +85,19 @@ export default function SueldoPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/sueldo"
+        description="Estimación de lo que entra por días trabajados y turnos."
+        actions={
+          <MonthStepper
+            label={formatMonthLabel(mes)}
+            onPrev={() => setMes((m) => mesVecino(m, -1))}
+            onNext={() => setMes((m) => mesVecino(m, 1))}
+          />
+        }
+      />
       <section>
-        <div className="mb-3 flex items-center justify-between">
-          <SectionTitle>Cuenta sueldo (referencia)</SectionTitle>
-          <div className="inline-flex items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900/50 p-1">
-            <button
-              type="button"
-              aria-label="Mes anterior"
-              className="grid size-8 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100"
-              onClick={() => setMes((m) => mesVecino(m, -1))}
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <span className="min-w-[8.5rem] text-center text-sm font-medium text-zinc-100">
-              {formatMonthLabel(mes)}
-            </span>
-            <button
-              type="button"
-              aria-label="Mes siguiente"
-              className="grid size-8 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100"
-              onClick={() => setMes((m) => mesVecino(m, 1))}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-        <p className="mb-4 text-xs text-zinc-500">
+        <p className="mb-4 text-sm text-muted">
           Es sólo una referencia de cuánto sueldo entra a Mercado Pago — no es
           una cuenta real, no mueve plata ni suma a tu patrimonio. Días
           laborales = lunes a sábado, sin descontar feriados.
@@ -119,7 +106,7 @@ export default function SueldoPage() {
         {/* Estimación del mes */}
         <div className="grid gap-3 sm:grid-cols-3">
           <Card>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
+            <p className="text-xs uppercase tracking-wide text-subtle">
               Días laborales del mes
             </p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-50">
@@ -127,7 +114,7 @@ export default function SueldoPage() {
             </p>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
+            <p className="text-xs uppercase tracking-wide text-subtle">
               Estimado · todo medio turno
             </p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-50">
@@ -135,7 +122,7 @@ export default function SueldoPage() {
             </p>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
+            <p className="text-xs uppercase tracking-wide text-subtle">
               Estimado · todo turno completo
             </p>
             <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-50">
@@ -150,7 +137,7 @@ export default function SueldoPage() {
         <Card>
           <div className="mb-3 flex flex-wrap items-center gap-4 text-xs text-zinc-400">
             <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded border border-zinc-800 bg-zinc-900/40" />
+              <span className="size-3 rounded border border-line bg-surface" />
               Sin marcar
             </span>
             <span className="flex items-center gap-1.5">
@@ -161,10 +148,10 @@ export default function SueldoPage() {
               <span className="size-3 rounded border border-emerald-500/40 bg-emerald-500/15" />
               Turno completo
             </span>
-            <span className="ml-auto text-zinc-500">Tocá un día para rotar</span>
+            <span className="ml-auto text-subtle">Tocá un día para rotar</span>
           </div>
 
-          <div className="grid grid-cols-7 gap-1.5 text-center text-xs text-zinc-600">
+          <div className="grid grid-cols-7 gap-1.5 text-center text-xs text-subtle">
             {NOMBRES_DIA.map((n, i) => (
               <div key={i} className="pb-1">
                 {n}
@@ -204,7 +191,7 @@ export default function SueldoPage() {
             <p className="text-2xl font-semibold tabular-nums text-zinc-50">
               {formatMoneda(totales.total, "ARS")}
             </p>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-subtle">
               {totales.diasTrabajados} días marcados · {totales.diasMedioTurno} medio
               turno · {totales.diasTurnoCompleto} turno completo
               {pctVsEstimado != null && (
@@ -217,7 +204,7 @@ export default function SueldoPage() {
 
       <section>
         <SectionTitle>Otros ingresos</SectionTitle>
-        <p className="mb-3 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-subtle">
           Comisiones y trabajos independientes — plata real que entra a
           Mercado Pago, además del sueldo. El monto se carga a mano cada vez
           porque varía.
@@ -238,14 +225,14 @@ export default function SueldoPage() {
 
       <section>
         <SectionTitle>Resumen del mes</SectionTitle>
-        <p className="mb-3 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-subtle">
           Todo lo que entró por tu trabajo este mes: el calendario de la
           cuenta sueldo (referencia) más las comisiones y trabajos
           independientes reales cobrados a Mercado Pago.
         </p>
         <div className="grid gap-3 sm:grid-cols-3">
           <Card>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
+            <p className="text-xs uppercase tracking-wide text-subtle">
               Sueldo (días marcados)
             </p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-50">
@@ -253,7 +240,7 @@ export default function SueldoPage() {
             </p>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
+            <p className="text-xs uppercase tracking-wide text-subtle">
               Comisiones
             </p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-50">
@@ -261,7 +248,7 @@ export default function SueldoPage() {
             </p>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-wide text-zinc-500">
+            <p className="text-xs uppercase tracking-wide text-subtle">
               Trabajo independiente
             </p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-zinc-50">
@@ -275,7 +262,7 @@ export default function SueldoPage() {
             <p className="text-2xl font-semibold tabular-nums text-zinc-50">
               {formatMoneda(totalCombinado, "ARS")}
             </p>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-subtle">
               Total cobrado este mes
               {pctVsEstimado != null && (
                 <> · {pctVsEstimado.toFixed(0)}% del estimado a turno completo</>

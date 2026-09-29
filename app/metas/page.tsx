@@ -8,14 +8,7 @@ import { getCotizacionUSD } from "@/lib/config";
 import { progresoMeta } from "@/lib/patrimonio";
 import { formatMoneda } from "@/lib/utils";
 import { ProgressBar, CircleProgress } from "@/components/ProgressBar";
-import {
-  Card,
-  SectionTitle,
-  Field,
-  EmptyState,
-  inputCls,
-  btnCls,
-} from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, PageHeader, LoadingState } from "@/components/ui";
 
 const COLORES = [
   "#34d399",
@@ -36,16 +29,20 @@ export default function MetasPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/metas"
+        description="Objetivos de ahorro medidos contra tu patrimonio consolidado."
+      />
       <section>
         <SectionTitle>Metas de ahorro</SectionTitle>
-        <p className="mb-3 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-subtle">
           El progreso consolida todo tu patrimonio (ARS + USD) a la moneda de la
           meta usando la cotización {formatMoneda(cotizacion ?? 0, "ARS")} / USD
           (se ajusta en Configuración).
         </p>
 
         {cargando ? (
-          <Card className="text-sm text-zinc-500">Cargando…</Card>
+          <LoadingState />
         ) : metas.length === 0 ? (
           <EmptyState>Todavía no creaste metas de ahorro.</EmptyState>
         ) : (
@@ -61,7 +58,7 @@ export default function MetasPage() {
                         <p className="text-sm font-medium text-zinc-100">
                           {meta.nombre}
                         </p>
-                        <p className="text-xs text-zinc-500">
+                        <p className="text-xs text-subtle">
                           Objetivo:{" "}
                           {formatMoneda(meta.monto_objetivo, meta.moneda)}
                         </p>
@@ -72,7 +69,7 @@ export default function MetasPage() {
                       onClick={() =>
                         meta.id != null && bovedaDB.metas_ahorro.delete(meta.id)
                       }
-                      className="text-zinc-600 transition-colors hover:text-red-400"
+                      className="text-subtle transition-colors hover:text-red-400"
                       aria-label="Borrar meta"
                     >
                       <Trash2 size={15} />
@@ -85,7 +82,7 @@ export default function MetasPage() {
                       <p className="text-lg font-semibold tabular-nums text-zinc-50">
                         {formatMoneda(p.actual, meta.moneda)}
                       </p>
-                      <p className="text-xs text-zinc-500">
+                      <p className="text-xs text-subtle">
                         {p.falta > 0
                           ? `Faltan ${formatMoneda(p.falta, meta.moneda)}`
                           : "¡Meta alcanzada! 🎉"}

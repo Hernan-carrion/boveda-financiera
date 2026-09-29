@@ -9,15 +9,7 @@ import { registrarCompraTarjeta, pagarDeudaTarjeta } from "@/lib/actions";
 import { calcularProgresoCompra, montoPorCuota } from "@/lib/cuotas";
 import { formatMoneda, periodoActual, cn } from "@/lib/utils";
 import { ProgressBar } from "@/components/ProgressBar";
-import {
-  Card,
-  SectionTitle,
-  Field,
-  EmptyState,
-  inputCls,
-  btnCls,
-  btnGhostCls,
-} from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, btnGhostCls, PageHeader, LoadingState } from "@/components/ui";
 
 export default function TarjetasPage() {
   const tarjetas = useLiveQuery(() => bovedaDB.tarjetas.toArray(), []);
@@ -52,6 +44,10 @@ export default function TarjetasPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/tarjetas"
+        description="Consumos por período, cuotas y pago de resúmenes."
+      />
       <section>
         <SectionTitle>Nueva tarjeta</SectionTitle>
         <NuevaTarjetaForm />
@@ -60,7 +56,7 @@ export default function TarjetasPage() {
       <section>
         <SectionTitle>Tarjetas</SectionTitle>
         {tarjetas === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <LoadingState />
         ) : tarjetas.length === 0 ? (
           <EmptyState>No registraste tarjetas.</EmptyState>
         ) : (
@@ -68,21 +64,21 @@ export default function TarjetasPage() {
             {tarjetas.map((t) => (
               <Card key={t.id}>
                 <div className="flex items-center gap-2 text-zinc-200">
-                  <CreditCard size={16} className="text-zinc-500" />
+                  <CreditCard size={16} className="text-subtle" />
                   <span className="font-medium">{t.nombre}</span>
-                  <span className="ml-auto text-xs text-zinc-500">{t.moneda}</span>
+                  <span className="ml-auto text-xs text-subtle">{t.moneda}</span>
                 </div>
                 <dl className="mt-3 grid grid-cols-3 gap-2 text-xs text-zinc-400">
                   <div>
-                    <dt className="text-zinc-600">Cierre</dt>
+                    <dt className="text-subtle">Cierre</dt>
                     <dd>día {t.dia_cierre}</dd>
                   </div>
                   <div>
-                    <dt className="text-zinc-600">Vencimiento</dt>
+                    <dt className="text-subtle">Vencimiento</dt>
                     <dd>día {t.dia_vencimiento}</dd>
                   </div>
                   <div>
-                    <dt className="text-zinc-600">Límite</dt>
+                    <dt className="text-subtle">Límite</dt>
                     <dd>{formatMoneda(t.limite, t.moneda)}</dd>
                   </div>
                 </dl>
@@ -94,17 +90,17 @@ export default function TarjetasPage() {
 
       <section>
         <SectionTitle>Próximo mes a pagar</SectionTitle>
-        <p className="mb-3 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-subtle">
           Lo que ya está comprometido en cuotas para el período{" "}
           {proximoPeriodo}, tarjeta por tarjeta.
         </p>
         {tarjetas === undefined || deudas === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <LoadingState />
         ) : tarjetas.length === 0 ? (
           <EmptyState>Primero creá una tarjeta.</EmptyState>
         ) : (
           <Card className="flex flex-col gap-3">
-            <div className="flex flex-col divide-y divide-zinc-800">
+            <div className="flex flex-col divide-y divide-line">
               {tarjetas.map((t) => {
                 const deuda = deudas.find(
                   (d) => d.tarjeta_id === t.id && d.periodo === proximoPeriodo,
@@ -116,7 +112,7 @@ export default function TarjetasPage() {
                     className="flex items-center justify-between py-2 text-sm"
                   >
                     <span className="flex items-center gap-2 text-zinc-300">
-                      <CalendarClock size={14} className="text-zinc-500" />
+                      <CalendarClock size={14} className="text-subtle" />
                       {t.nombre}
                     </span>
                     <span className="tabular-nums text-zinc-100">
@@ -126,8 +122,8 @@ export default function TarjetasPage() {
                 );
               })}
             </div>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-zinc-800 pt-3 text-sm">
-              <span className="text-zinc-500">Total {proximoPeriodo}:</span>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-line pt-3 text-sm">
+              <span className="text-subtle">Total {proximoPeriodo}:</span>
               {Object.keys(totalProximoPorMoneda).length === 0 ? (
                 <span className="font-semibold text-zinc-400">$0</span>
               ) : (
@@ -147,7 +143,7 @@ export default function TarjetasPage() {
 
       <section>
         <SectionTitle>Registrar compra</SectionTitle>
-        <p className="mb-3 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-subtle">
           Elegí la cantidad de cuotas y el reparto se calcula solo: cada cuota
           se suma automáticamente al resumen del período que le corresponde,
           mes a mes, hasta cubrir el total.
@@ -158,7 +154,7 @@ export default function TarjetasPage() {
       <section>
         <SectionTitle>Compras en cuotas</SectionTitle>
         {compras === undefined || deudas === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <LoadingState />
         ) : compras.length === 0 ? (
           <EmptyState>Todavía no registraste compras en cuotas.</EmptyState>
         ) : (
@@ -171,11 +167,11 @@ export default function TarjetasPage() {
               return (
                 <Card key={c.id} className="flex flex-col gap-2">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                    <Layers size={15} className="text-zinc-500" />
+                    <Layers size={15} className="text-subtle" />
                     <span className="font-medium text-zinc-200">
                       {c.descripcion}
                     </span>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-subtle">
                       {nombreTarjeta(c.tarjeta_id)}
                     </span>
                     <span className="ml-auto tabular-nums text-zinc-300">
@@ -184,7 +180,7 @@ export default function TarjetasPage() {
                     </span>
                   </div>
                   <ProgressBar pct={progreso.pct} estado="ok" />
-                  <div className="flex flex-wrap items-center justify-between text-xs text-zinc-500">
+                  <div className="flex flex-wrap items-center justify-between text-xs text-subtle">
                     <span>
                       {progreso.finalizada
                         ? "Todas las cuotas pagadas ✓"
@@ -211,7 +207,7 @@ export default function TarjetasPage() {
       <section>
         <SectionTitle>Resúmenes / deudas</SectionTitle>
         {deudas === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <LoadingState />
         ) : deudas.length === 0 ? (
           <EmptyState>Sin deudas registradas.</EmptyState>
         ) : (
@@ -481,7 +477,7 @@ function DeudaRow({
     <Card>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span className="font-medium text-zinc-200">{tarjetaNombre}</span>
-        <span className="text-zinc-500">{deuda.periodo}</span>
+        <span className="text-subtle">{deuda.periodo}</span>
         <span
           className={cn(
             deuda.estado === "pagada"

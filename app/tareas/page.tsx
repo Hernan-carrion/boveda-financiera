@@ -8,14 +8,7 @@ import { crearTarea, crearProyecto, completarTarea, borrarProyecto } from "@/lib
 import { diasHasta } from "@/lib/recordatorios";
 import { cn } from "@/lib/utils";
 import EditarTareaModal from "@/components/EditarTareaModal";
-import {
-  Card,
-  SectionTitle,
-  Field,
-  EmptyState,
-  inputCls,
-  btnCls,
-} from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, PageHeader, LoadingState } from "@/components/ui";
 
 const PRIORIDADES: { value: PrioridadTarea; label: string }[] = [
   { value: "alta", label: "Alta" },
@@ -26,7 +19,7 @@ const PRIORIDADES: { value: PrioridadTarea; label: string }[] = [
 const COLOR_PRIORIDAD: Record<PrioridadTarea, string> = {
   alta: "text-red-400",
   media: "text-amber-400",
-  baja: "text-zinc-500",
+  baja: "text-subtle",
 };
 
 const COLORES_PROYECTO = ["#34d399", "#38bdf8", "#a78bfa", "#fbbf24", "#f87171", "#fb923c"];
@@ -66,6 +59,10 @@ export default function TareasPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/tareas"
+        description="Pendientes por proyecto, prioridad y vencimiento."
+      />
       <section>
         <SectionTitle>Filtros</SectionTitle>
         <Card className="grid gap-3 sm:grid-cols-3">
@@ -119,11 +116,11 @@ export default function TareasPage() {
       <section>
         <SectionTitle>{`Tareas (${filtradas.length})`}</SectionTitle>
         {tareas === undefined ? (
-          <p className="text-sm text-zinc-500">Cargando…</p>
+          <LoadingState />
         ) : filtradas.length === 0 ? (
           <EmptyState>No hay tareas con estos filtros.</EmptyState>
         ) : (
-          <ul className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
             {filtradas.map((t) => {
               const hecha = t.estado === "hecha";
               const dias = t.fecha_vencimiento ? diasHasta(t.fecha_vencimiento) : null;
@@ -131,13 +128,13 @@ export default function TareasPage() {
               return (
                 <li
                   key={t.id}
-                  className="flex items-center gap-3 bg-zinc-900/40 px-4 py-3 transition-colors hover:bg-zinc-800/40"
+                  className="flex items-center gap-3 bg-surface px-4 py-3 transition-colors hover:bg-zinc-800/40"
                 >
                   <button
                     type="button"
                     onClick={() => t.id != null && completarTarea(t.id, !hecha)}
                     aria-label={hecha ? "Marcar pendiente" : "Marcar hecha"}
-                    className="shrink-0 text-zinc-500 transition-colors hover:text-emerald-400"
+                    className="shrink-0 text-subtle transition-colors hover:text-emerald-400"
                   >
                     {hecha ? (
                       <CheckSquare size={18} className="text-emerald-400" />
@@ -153,12 +150,12 @@ export default function TareasPage() {
                     <p
                       className={cn(
                         "truncate text-sm",
-                        hecha ? "text-zinc-500 line-through" : "text-zinc-200",
+                        hecha ? "text-subtle line-through" : "text-zinc-200",
                       )}
                     >
                       {t.titulo}
                     </p>
-                    <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-zinc-500">
+                    <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-subtle">
                       {proyNombre && (
                         <span className="flex items-center gap-1">
                           <span
@@ -205,7 +202,7 @@ export default function TareasPage() {
               <button
                 type="button"
                 onClick={() => p.id != null && borrarProyecto(p.id)}
-                className="text-xs text-zinc-500 transition-colors hover:text-red-400"
+                className="text-xs text-subtle transition-colors hover:text-red-400"
               >
                 Archivar
               </button>

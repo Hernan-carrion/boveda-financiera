@@ -9,7 +9,7 @@ import {
   getLoanReturnRate,
 } from "@/lib/metrics";
 import { formatMoneda } from "@/lib/utils";
-import { Card, SectionTitle } from "@/components/ui";
+import { Card, SectionTitle, PageHeader, LoadingState } from "@/components/ui";
 import MonthlyBalanceChart from "@/components/charts/MonthlyBalanceChart";
 import CategoryPieChart from "@/components/charts/CategoryPieChart";
 import MetricsCards from "@/components/charts/MetricsCards";
@@ -32,10 +32,14 @@ export default function ResumenPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/resumen"
+        description="Indicadores y distribución del gasto del mes."
+      />
       <section>
         <SectionTitle>Indicadores del mes (ARS)</SectionTitle>
         {cargando ? (
-          <Card className="text-sm text-zinc-500">Cargando métricas…</Card>
+          <LoadingState rows={2} label="Cargando métricas" />
         ) : (
           <MetricsCards
             ratioGastoIngreso={ratio}
@@ -51,7 +55,7 @@ export default function ResumenPage() {
             <MonthlyBalanceChart ingresos={ingresos} egresos={egresos} />
             <dl className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
               <div>
-                <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                <dt className="text-xs uppercase tracking-wide text-subtle">
                   Ingresos
                 </dt>
                 <dd className="mt-0.5 font-semibold text-emerald-400">
@@ -59,7 +63,7 @@ export default function ResumenPage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                <dt className="text-xs uppercase tracking-wide text-subtle">
                   Egresos
                 </dt>
                 <dd className="mt-0.5 font-semibold text-red-400">
@@ -67,7 +71,7 @@ export default function ResumenPage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-wide text-zinc-500">
+                <dt className="text-xs uppercase tracking-wide text-subtle">
                   Balance
                 </dt>
                 <dd

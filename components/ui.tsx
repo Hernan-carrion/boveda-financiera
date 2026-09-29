@@ -18,7 +18,7 @@ export const btnGhostCls =
 
 /** Link dentro de texto corrido (estados vacíos, ayudas). */
 export const inlineLinkCls =
-  "font-medium text-accent underline-offset-4 hover:underline";
+  "font-medium text-section underline-offset-4 hover:underline";
 
 /**
  * Encabezado de página: toma ícono, nombre y color del mapa de navegación
@@ -134,7 +134,7 @@ export function Card({
 export function SectionTitle({ children }: { children: ReactNode }) {
   return (
     <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold text-zinc-100">
-      <span className="h-4 w-1 rounded-full bg-accent" aria-hidden />
+      <span className="h-4 w-1 rounded-full bg-section" aria-hidden />
       {children}
     </h2>
   );

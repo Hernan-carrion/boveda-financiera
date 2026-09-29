@@ -4,6 +4,7 @@ import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import AppInit from "@/components/AppInit";
 import NavBar from "@/components/NavBar";
+import ToneScope from "@/components/ToneScope";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -83,7 +84,7 @@ export default function RootLayout({
             tabIndex={-1}
             className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none sm:px-6 lg:px-10 lg:py-10"
           >
-            {children}
+            <ToneScope>{children}</ToneScope>
           </main>
           <footer className="border-t border-line px-4 py-4 text-center text-xs text-subtle">
             Huella · datos guardados sólo en este dispositivo (IndexedDB)

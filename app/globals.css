@@ -17,7 +17,14 @@
   --accent: #34d399; /* esmeralda: Finanzas */
   --accent-life: #a78bfa; /* violeta: Vida */
   --ring: #6ee7b7;
+  /* Acento de la sección actual: lo fija <ToneScope> con data-tone según la
+     ruta. Por defecto esmeralda (Finanzas); en Vida pasa a violeta. */
+  --section: var(--accent);
   color-scheme: dark;
+}
+
+[data-tone="life"] {
+  --section: var(--accent-life);
 }
 
 @theme inline {
@@ -31,6 +38,7 @@
   --color-subtle: var(--subtle);
   --color-accent: var(--accent);
   --color-accent-life: var(--accent-life);
+  --color-section: var(--section);
   --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

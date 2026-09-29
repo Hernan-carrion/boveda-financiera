@@ -34,7 +34,7 @@ import {
   setTarifaTurnoCompleto,
 } from "@/lib/config";
 import { formatMoneda } from "@/lib/utils";
-import { Card, SectionTitle, Field, inputCls, btnCls, btnGhostCls, PageHeader } from "@/components/ui";
+import { Card, SectionTitle, Field, inputCls, btnCls, btnGhostCls, PageHeader, inlineLinkCls } from "@/components/ui";
 
 export default function ConfiguracionPage() {
   const cuentas = useLiveQuery(() => bovedaDB.cuentas.orderBy("nombre").toArray(), []);
@@ -303,7 +303,7 @@ function TarifasTurnoSection() {
       <Card className="flex flex-col gap-3">
         <p className="text-sm text-zinc-400">
           Cuánto vale cada día trabajado según el turno. Se usan en{" "}
-          <Link href="/sueldo" className="font-medium text-accent underline-offset-4 hover:underline">
+          <Link href="/sueldo" className={inlineLinkCls}>
             Cuenta sueldo
           </Link>{" "}
           para marcar días y para la estimación mensual — es sólo una

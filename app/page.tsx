@@ -24,7 +24,7 @@ import QuickInput from "@/components/QuickInput";
 import CobrarSueldoButton from "@/components/CobrarSueldoButton";
 import EditarMovimientoModal from "@/components/EditarMovimientoModal";
 import { ProgressBar, CircleProgress } from "@/components/ProgressBar";
-import { Card, SectionTitle, EmptyState } from "@/components/ui";
+import { Card, SectionTitle, EmptyState, inlineLinkCls } from "@/components/ui";
 
 const bento =
   "rounded-2xl border border-line bg-surface p-5 transition-colors duration-200 hover:border-line-strong/80";
@@ -295,7 +295,7 @@ export default function DashboardPage() {
         {avances.length === 0 ? (
           <EmptyState>
             Sin presupuestos este mes.{" "}
-            <Link href="/presupuestos" className="font-medium text-accent underline-offset-4 hover:underline">
+            <Link href="/presupuestos" className={inlineLinkCls}>
               Crear uno
             </Link>
             .

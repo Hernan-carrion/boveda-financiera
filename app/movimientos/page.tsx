@@ -7,7 +7,7 @@ import { bovedaDB, type Transaccion, type TipoTransaccion, type Moneda } from "@
 import { CATEGORIAS_DISPONIBLES } from "@/lib/categorizer";
 import { formatMoneda, formatFecha, cn } from "@/lib/utils";
 import EditarMovimientoModal from "@/components/EditarMovimientoModal";
-import { Card, SectionTitle, Field, EmptyState, inputCls, btnGhostCls } from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnGhostCls, PageHeader, LoadingState } from "@/components/ui";
 
 const TIPOS_FILTRO: { value: TipoTransaccion | ""; label: string }[] = [
   { value: "", label: "Todos" },
@@ -77,6 +77,10 @@ export default function MovimientosPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <PageHeader
+        href="/movimientos"
+        description="Todos tus ingresos y gastos, con filtros y edición."
+      />
       <section>
         <SectionTitle>Filtros</SectionTitle>
         <Card className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -180,7 +184,7 @@ export default function MovimientosPage() {
         </div>
 
         {transacciones === undefined ? (
-          <p className="text-sm text-subtle">Cargando…</p>
+          <LoadingState />
         ) : filtrados.length === 0 ? (
           <EmptyState>
             {hayFiltros
@@ -188,7 +192,7 @@ export default function MovimientosPage() {
               : "Todavía no cargaste movimientos."}
           </EmptyState>
         ) : (
-          <ul className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
             {filtrados.map((t) => {
               const positivo = t.tipo === "ingreso" || t.tipo === "devolucion";
               return (
@@ -196,7 +200,7 @@ export default function MovimientosPage() {
                   <button
                     type="button"
                     onClick={() => setEditando(t)}
-                    className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 bg-zinc-900/40 px-4 py-3 text-left transition-colors hover:bg-zinc-800/40"
+                    className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 bg-surface px-4 py-3 text-left transition-colors hover:bg-zinc-800/40"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm text-zinc-200">

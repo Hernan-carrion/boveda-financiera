@@ -6,7 +6,7 @@ import { Pencil, Pin, PinOff, Plus, Trash2, X, Check } from "lucide-react";
 import { bovedaDB, type Nota } from "@/lib/db";
 import { crearNota, actualizarNota, fijarNota, borrarNota } from "@/lib/actions";
 import { cn } from "@/lib/utils";
-import { Card, SectionTitle, EmptyState, inputCls, btnCls } from "@/components/ui";
+import { Card, SectionTitle, EmptyState, inputCls, btnCls, PageHeader, LoadingState } from "@/components/ui";
 
 export default function NotasPage() {
   const notas = useLiveQuery(
@@ -23,6 +23,10 @@ export default function NotasPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/notas"
+        description="Apuntes rápidos guardados en este dispositivo."
+      />
       <section>
         <SectionTitle>Nueva nota</SectionTitle>
         <NuevaNotaForm />
@@ -31,7 +35,7 @@ export default function NotasPage() {
       <section>
         <SectionTitle>{`Notas (${ordenadas.length})`}</SectionTitle>
         {notas === undefined ? (
-          <p className="text-sm text-subtle">Cargando…</p>
+          <LoadingState />
         ) : ordenadas.length === 0 ? (
           <EmptyState>Todavía no cargaste notas.</EmptyState>
         ) : (

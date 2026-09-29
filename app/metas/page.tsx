@@ -8,14 +8,7 @@ import { getCotizacionUSD } from "@/lib/config";
 import { progresoMeta } from "@/lib/patrimonio";
 import { formatMoneda } from "@/lib/utils";
 import { ProgressBar, CircleProgress } from "@/components/ProgressBar";
-import {
-  Card,
-  SectionTitle,
-  Field,
-  EmptyState,
-  inputCls,
-  btnCls,
-} from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, PageHeader, LoadingState } from "@/components/ui";
 
 const COLORES = [
   "#34d399",
@@ -36,6 +29,10 @@ export default function MetasPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/metas"
+        description="Objetivos de ahorro medidos contra tu patrimonio consolidado."
+      />
       <section>
         <SectionTitle>Metas de ahorro</SectionTitle>
         <p className="mb-3 text-xs text-subtle">
@@ -45,7 +42,7 @@ export default function MetasPage() {
         </p>
 
         {cargando ? (
-          <Card className="text-sm text-subtle">Cargando…</Card>
+          <LoadingState />
         ) : metas.length === 0 ? (
           <EmptyState>Todavía no creaste metas de ahorro.</EmptyState>
         ) : (

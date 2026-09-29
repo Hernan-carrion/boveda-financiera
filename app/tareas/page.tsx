@@ -8,14 +8,7 @@ import { crearTarea, crearProyecto, completarTarea, borrarProyecto } from "@/lib
 import { diasHasta } from "@/lib/recordatorios";
 import { cn } from "@/lib/utils";
 import EditarTareaModal from "@/components/EditarTareaModal";
-import {
-  Card,
-  SectionTitle,
-  Field,
-  EmptyState,
-  inputCls,
-  btnCls,
-} from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, PageHeader, LoadingState } from "@/components/ui";
 
 const PRIORIDADES: { value: PrioridadTarea; label: string }[] = [
   { value: "alta", label: "Alta" },
@@ -66,6 +59,10 @@ export default function TareasPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/tareas"
+        description="Pendientes por proyecto, prioridad y vencimiento."
+      />
       <section>
         <SectionTitle>Filtros</SectionTitle>
         <Card className="grid gap-3 sm:grid-cols-3">
@@ -119,11 +116,11 @@ export default function TareasPage() {
       <section>
         <SectionTitle>{`Tareas (${filtradas.length})`}</SectionTitle>
         {tareas === undefined ? (
-          <p className="text-sm text-subtle">Cargando…</p>
+          <LoadingState />
         ) : filtradas.length === 0 ? (
           <EmptyState>No hay tareas con estos filtros.</EmptyState>
         ) : (
-          <ul className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
             {filtradas.map((t) => {
               const hecha = t.estado === "hecha";
               const dias = t.fecha_vencimiento ? diasHasta(t.fecha_vencimiento) : null;
@@ -131,7 +128,7 @@ export default function TareasPage() {
               return (
                 <li
                   key={t.id}
-                  className="flex items-center gap-3 bg-zinc-900/40 px-4 py-3 transition-colors hover:bg-zinc-800/40"
+                  className="flex items-center gap-3 bg-surface px-4 py-3 transition-colors hover:bg-zinc-800/40"
                 >
                   <button
                     type="button"

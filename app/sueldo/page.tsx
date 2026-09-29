@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ChevronLeft, ChevronRight, Wallet, Percent, Briefcase } from "lucide-react";
+import { Wallet, Percent, Briefcase } from "lucide-react";
 import { bovedaDB } from "@/lib/db";
 import { CATEGORIA_COMISION, CATEGORIA_TRABAJO_INDEPENDIENTE } from "@/lib/categorizer";
 import { getTarifasTurno } from "@/lib/config";
@@ -17,13 +17,13 @@ import {
 } from "@/lib/sueldo";
 import { marcarDiaTrabajado } from "@/lib/actions";
 import { formatMoneda, formatPct, cn } from "@/lib/utils";
-import { Card, SectionTitle } from "@/components/ui";
+import { Card, SectionTitle, PageHeader, MonthStepper } from "@/components/ui";
 import IngresoExtraButton from "@/components/IngresoExtraButton";
 
 const NOMBRES_DIA = ["D", "L", "M", "M", "J", "V", "S"];
 
 const colorCelda: Record<string, string> = {
-  ninguno: "border-zinc-800 bg-zinc-900/40 text-subtle hover:bg-zinc-800/60",
+  ninguno: "border-line bg-surface text-subtle hover:bg-zinc-800/60",
   medio: "border-amber-500/40 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25",
   completo:
     "border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25",
@@ -85,32 +85,19 @@ export default function SueldoPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/sueldo"
+        description="Estimación de lo que entra por días trabajados y turnos."
+        actions={
+          <MonthStepper
+            label={formatMonthLabel(mes)}
+            onPrev={() => setMes((m) => mesVecino(m, -1))}
+            onNext={() => setMes((m) => mesVecino(m, 1))}
+          />
+        }
+      />
       <section>
-        <div className="mb-3 flex items-center justify-between">
-          <SectionTitle>Cuenta sueldo (referencia)</SectionTitle>
-          <div className="inline-flex items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900/50 p-1">
-            <button
-              type="button"
-              aria-label="Mes anterior"
-              className="grid size-8 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100"
-              onClick={() => setMes((m) => mesVecino(m, -1))}
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <span className="min-w-[8.5rem] text-center text-sm font-medium text-zinc-100">
-              {formatMonthLabel(mes)}
-            </span>
-            <button
-              type="button"
-              aria-label="Mes siguiente"
-              className="grid size-8 place-items-center rounded-full text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100"
-              onClick={() => setMes((m) => mesVecino(m, 1))}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-        <p className="mb-4 text-xs text-subtle">
+        <p className="mb-4 text-sm text-muted">
           Es sólo una referencia de cuánto sueldo entra a Mercado Pago — no es
           una cuenta real, no mueve plata ni suma a tu patrimonio. Días
           laborales = lunes a sábado, sin descontar feriados.
@@ -150,7 +137,7 @@ export default function SueldoPage() {
         <Card>
           <div className="mb-3 flex flex-wrap items-center gap-4 text-xs text-zinc-400">
             <span className="flex items-center gap-1.5">
-              <span className="size-3 rounded border border-zinc-800 bg-zinc-900/40" />
+              <span className="size-3 rounded border border-line bg-surface" />
               Sin marcar
             </span>
             <span className="flex items-center gap-1.5">

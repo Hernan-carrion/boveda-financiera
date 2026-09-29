@@ -9,15 +9,7 @@ import { registrarCompraTarjeta, pagarDeudaTarjeta } from "@/lib/actions";
 import { calcularProgresoCompra, montoPorCuota } from "@/lib/cuotas";
 import { formatMoneda, periodoActual, cn } from "@/lib/utils";
 import { ProgressBar } from "@/components/ProgressBar";
-import {
-  Card,
-  SectionTitle,
-  Field,
-  EmptyState,
-  inputCls,
-  btnCls,
-  btnGhostCls,
-} from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, btnGhostCls, PageHeader, LoadingState } from "@/components/ui";
 
 export default function TarjetasPage() {
   const tarjetas = useLiveQuery(() => bovedaDB.tarjetas.toArray(), []);
@@ -52,6 +44,10 @@ export default function TarjetasPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/tarjetas"
+        description="Consumos por período, cuotas y pago de resúmenes."
+      />
       <section>
         <SectionTitle>Nueva tarjeta</SectionTitle>
         <NuevaTarjetaForm />
@@ -60,7 +56,7 @@ export default function TarjetasPage() {
       <section>
         <SectionTitle>Tarjetas</SectionTitle>
         {tarjetas === undefined ? (
-          <p className="text-sm text-subtle">Cargando…</p>
+          <LoadingState />
         ) : tarjetas.length === 0 ? (
           <EmptyState>No registraste tarjetas.</EmptyState>
         ) : (
@@ -99,12 +95,12 @@ export default function TarjetasPage() {
           {proximoPeriodo}, tarjeta por tarjeta.
         </p>
         {tarjetas === undefined || deudas === undefined ? (
-          <p className="text-sm text-subtle">Cargando…</p>
+          <LoadingState />
         ) : tarjetas.length === 0 ? (
           <EmptyState>Primero creá una tarjeta.</EmptyState>
         ) : (
           <Card className="flex flex-col gap-3">
-            <div className="flex flex-col divide-y divide-zinc-800">
+            <div className="flex flex-col divide-y divide-line">
               {tarjetas.map((t) => {
                 const deuda = deudas.find(
                   (d) => d.tarjeta_id === t.id && d.periodo === proximoPeriodo,
@@ -126,7 +122,7 @@ export default function TarjetasPage() {
                 );
               })}
             </div>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-zinc-800 pt-3 text-sm">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-line pt-3 text-sm">
               <span className="text-subtle">Total {proximoPeriodo}:</span>
               {Object.keys(totalProximoPorMoneda).length === 0 ? (
                 <span className="font-semibold text-zinc-400">$0</span>
@@ -158,7 +154,7 @@ export default function TarjetasPage() {
       <section>
         <SectionTitle>Compras en cuotas</SectionTitle>
         {compras === undefined || deudas === undefined ? (
-          <p className="text-sm text-subtle">Cargando…</p>
+          <LoadingState />
         ) : compras.length === 0 ? (
           <EmptyState>Todavía no registraste compras en cuotas.</EmptyState>
         ) : (
@@ -211,7 +207,7 @@ export default function TarjetasPage() {
       <section>
         <SectionTitle>Resúmenes / deudas</SectionTitle>
         {deudas === undefined ? (
-          <p className="text-sm text-subtle">Cargando…</p>
+          <LoadingState />
         ) : deudas.length === 0 ? (
           <EmptyState>Sin deudas registradas.</EmptyState>
         ) : (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import Link from "next/link";
 import {
@@ -34,14 +34,7 @@ import {
   setTarifaTurnoCompleto,
 } from "@/lib/config";
 import { formatMoneda } from "@/lib/utils";
-import {
-  Card,
-  SectionTitle,
-  Field,
-  inputCls,
-  btnCls,
-  btnGhostCls,
-} from "@/components/ui";
+import { Card, SectionTitle, Field, inputCls, btnCls, btnGhostCls, PageHeader } from "@/components/ui";
 
 export default function ConfiguracionPage() {
   const cuentas = useLiveQuery(() => bovedaDB.cuentas.orderBy("nombre").toArray(), []);
@@ -100,6 +93,10 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/configuracion"
+        description="Cotización, sueldo, tarifas, cuentas y respaldo de tus datos."
+      />
       <CotizacionSection />
       <SueldoSection />
       <TarifasTurnoSection />
@@ -447,7 +444,12 @@ function CloudSyncSection() {
   );
 }
 
+const sinSuscripcion = () => () => {};
+
 function PushNotificacionesSection() {
+  // pushSupported mira `window`: en el prerender da false y en el cliente
+  // true. Leerlo así evita el mismatch de hidratación.
+  const soportado = useSyncExternalStore(sinSuscripcion, () => pushSupported, () => false);
   const [estado, setEstado] = useState<EstadoPush | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -482,19 +484,19 @@ function PushNotificacionesSection() {
           las 8hs (o con los días de antelación que configures en cada uno),
           aunque la app esté cerrada.
         </p>
-        {!pushSupported && (
+        {!soportado && (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-300">
             Este navegador no soporta notificaciones push, o falta configurar{" "}
             <code>NEXT_PUBLIC_VAPID_PUBLIC_KEY</code>.
           </p>
         )}
-        {pushSupported && estado === "denegado" && (
+        {soportado && estado === "denegado" && (
           <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-xs text-red-300">
             Bloqueaste las notificaciones para este sitio. Habilitalas en los
             permisos del navegador para poder activarlas acá.
           </p>
         )}
-        {pushSupported && estado === "activo" && (
+        {soportado && estado === "activo" && (
           <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-300">
             Notificaciones activadas en este dispositivo.
           </p>
@@ -514,7 +516,7 @@ function PushNotificacionesSection() {
             <button
               type="button"
               onClick={activar}
-              disabled={busy || !pushSupported || estado === "denegado"}
+              disabled={busy || !soportado || estado === "denegado"}
               className={btnCls}
             >
               {busy ? <Loader2 size={16} className="animate-spin" /> : <Bell size={16} />}

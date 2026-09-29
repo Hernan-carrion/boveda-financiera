@@ -19,6 +19,7 @@ import BentoCard from "@/components/historico/BentoCard";
 import StatTile from "@/components/historico/StatTile";
 import NetWorthAreaChart from "@/components/charts/NetWorthAreaChart";
 import IncomeExpenseChart from "@/components/charts/IncomeExpenseChart";
+import { PageHeader } from "@/components/ui";
 
 function pctChange(cur: number, prev: number): number | null {
   if (!Number.isFinite(prev) || prev === 0) return null;
@@ -83,21 +84,17 @@ export default function HistoricoPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-zinc-50">
-            Resúmenes mensuales
-          </h1>
-          <p className="mt-1 text-sm text-subtle">
-            Consolidado histórico de patrimonio y flujo de caja · ARS
-          </p>
-        </div>
-        <MonthYearSelector
-          value={selected}
-          months={months}
-          onChange={setSelected}
-        />
-      </div>
+      <PageHeader
+        href="/historico"
+        description="Consolidado histórico de patrimonio y flujo de caja · ARS"
+        actions={
+          <MonthYearSelector
+            value={selected}
+            months={months}
+            onChange={setSelected}
+          />
+        }
+      />
 
       <div className="rounded-3xl border border-white/5 bg-[#08080c] p-3 sm:p-5 [background-image:radial-gradient(110%_80%_at_0%_0%,rgba(59,130,246,0.08),transparent_55%),radial-gradient(90%_70%_at_100%_0%,rgba(74,222,128,0.05),transparent_45%)]">
         {cargando ? (

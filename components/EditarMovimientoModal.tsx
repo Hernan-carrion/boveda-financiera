@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import type { Cuenta, Moneda, Transaccion, TipoTransaccion } from "@/lib/db";
 import { CATEGORIAS_DISPONIBLES } from "@/lib/categorizer";
 import { actualizarTransaccion, borrarTransaccion } from "@/lib/actions";
 import { inputCls, btnCls, Field } from "@/components/ui";
+import Modal from "@/components/Modal";
 
 const TIPOS: { value: TipoTransaccion; label: string }[] = [
   { value: "egreso", label: "Egreso" },
@@ -44,43 +44,14 @@ export default function EditarMovimientoModal({
   onClose: () => void;
 }) {
   return (
-    <AnimatePresence>
+    <Modal open={!!tx} title="Editar movimiento" onClose={onClose}>
+      {/* key={tx.id}: al cambiar de movimiento se remonta el form entero,
+          así el estado arranca siempre de los valores del tx actual sin
+          necesitar un efecto que lo sincronice. */}
       {tx && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-        >
-          <motion.div
-            className="w-full max-w-md rounded-t-2xl border border-white/10 bg-zinc-900/70 p-5 shadow-2xl backdrop-blur-xl sm:rounded-2xl"
-            initial={{ y: 40, opacity: 0, scale: 0.98 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 40, opacity: 0, scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 300, damping: 28 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-start justify-between">
-              <p className="text-sm font-medium text-zinc-100">Editar movimiento</p>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg p-1 text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-100"
-                aria-label="Cerrar"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* key={tx.id}: al cambiar de movimiento se remonta el form entero,
-                así el estado arranca siempre de los valores del tx actual sin
-                necesitar un efecto que lo sincronice. */}
-            <MovimientoForm key={tx.id} tx={tx} cuentas={cuentas} onClose={onClose} />
-          </motion.div>
-        </motion.div>
+        <MovimientoForm key={tx.id} tx={tx} cuentas={cuentas} onClose={onClose} />
       )}
-    </AnimatePresence>
+    </Modal>
   );
 }
 

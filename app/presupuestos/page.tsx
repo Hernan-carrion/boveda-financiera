@@ -8,14 +8,7 @@ import { CATEGORIAS_EGRESO } from "@/lib/categorizer";
 import { calcularAvances } from "@/lib/presupuestos";
 import { formatMoneda, periodoActual, cn } from "@/lib/utils";
 import { ProgressBar } from "@/components/ProgressBar";
-import {
-  Card,
-  SectionTitle,
-  Field,
-  EmptyState,
-  inputCls,
-  btnCls,
-} from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, PageHeader, LoadingState } from "@/components/ui";
 
 function nombreMes(mes: string): string {
   const [y, m] = mes.split("-").map(Number);
@@ -41,19 +34,24 @@ export default function PresupuestosPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <SectionTitle>Presupuestos · {nombreMes(mes)}</SectionTitle>
+      <PageHeader
+        href="/presupuestos"
+        description="Topes de gasto por categoría y cuánto llevás usado."
+        actions={
           <input
             type="month"
+            aria-label="Mes de los presupuestos"
             className={`${inputCls} w-auto`}
             value={mes}
             onChange={(e) => setMes(e.target.value || periodoActual())}
           />
-        </div>
+        }
+      />
+      <section>
+        <SectionTitle>{nombreMes(mes)}</SectionTitle>
 
         {cargando ? (
-          <Card className="text-sm text-subtle">Cargando…</Card>
+          <LoadingState />
         ) : avances.length === 0 ? (
           <EmptyState>
             No hay presupuestos para este mes. Creá uno abajo.

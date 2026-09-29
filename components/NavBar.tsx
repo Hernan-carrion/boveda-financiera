@@ -4,30 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  Wallet,
-  PieChart,
-  History,
-  CreditCard,
-  HandCoins,
-  Coins,
-  Settings,
-  Target,
-  Repeat,
-  PiggyBank,
-  BarChart3,
-  Receipt,
-  CalendarCheck,
-  ListFilter,
-  CheckSquare,
-  Bell,
-  StickyNote,
-  Sun,
-  Flame,
-  Menu,
-  X,
-} from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { navGroups, configLink, TONE, type NavLink } from "@/lib/nav";
 
 /**
  * En GitHub Pages de proyecto el sitio vive bajo /boveda-financiera. Un <img>
@@ -35,68 +14,6 @@ import { cn } from "@/lib/utils";
  * anteponemos a mano — mismo patrón que ServiceWorkerRegister.tsx.
  */
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
-
-type NavLink = { href: string; label: string; Icon: typeof Wallet };
-
-/**
- * Dos pilares: Vida en violeta, Finanzas en esmeralda. En desktop (lg+) la
- * navegación vive en un sidebar fijo — antes eran 19 links en línea que se
- * partían en varias filas. Debajo de lg colapsa a un drawer lateral.
- */
-const navGroups: {
-  label: string;
-  tone: "life" | "money";
-  links: NavLink[];
-}[] = [
-  {
-    label: "Vida",
-    tone: "life",
-    links: [
-      { href: "/hoy", label: "Hoy", Icon: Sun },
-      { href: "/tareas", label: "Tareas", Icon: CheckSquare },
-      { href: "/habitos", label: "Hábitos", Icon: Flame },
-      { href: "/recordatorios", label: "Recordatorios", Icon: Bell },
-      { href: "/notas", label: "Notas", Icon: StickyNote },
-    ],
-  },
-  {
-    label: "Finanzas",
-    tone: "money",
-    links: [
-      { href: "/", label: "Dashboard", Icon: Wallet },
-      { href: "/movimientos", label: "Movimientos", Icon: ListFilter },
-      { href: "/presupuestos", label: "Presupuestos", Icon: Target },
-      { href: "/metas", label: "Metas", Icon: PiggyBank },
-      { href: "/suscripciones", label: "Suscripciones", Icon: Repeat },
-      { href: "/sueldo", label: "Cuenta sueldo", Icon: CalendarCheck },
-      { href: "/por-cobrar", label: "Por cobrar", Icon: Receipt },
-      { href: "/estadisticas", label: "Estadísticas", Icon: BarChart3 },
-      { href: "/resumen", label: "Resumen", Icon: PieChart },
-      { href: "/historico", label: "Histórico", Icon: History },
-      { href: "/tarjetas", label: "Tarjetas", Icon: CreditCard },
-      { href: "/prestamos", label: "Préstamos", Icon: HandCoins },
-      { href: "/inversiones", label: "Inversiones", Icon: Coins },
-    ],
-  },
-];
-
-const TONE = {
-  life: {
-    heading: "text-accent-life",
-    active: "bg-violet-500/10 text-violet-200 before:bg-accent-life",
-    icon: "text-accent-life",
-  },
-  money: {
-    heading: "text-accent",
-    active: "bg-emerald-500/10 text-emerald-100 before:bg-accent",
-    icon: "text-accent",
-  },
-  neutral: {
-    heading: "",
-    active: "bg-white/5 text-zinc-50 before:bg-zinc-300",
-    icon: "text-zinc-200",
-  },
-} as const;
 
 /** Con `trailingSlash: true` el pathname puede venir como "/tareas/". */
 function normalizar(path: string) {
@@ -171,9 +88,9 @@ function NavContenido({
       ))}
       <div className="mt-auto border-t border-line pt-4">
         <NavItem
-          link={{ href: "/configuracion", label: "Configuración", Icon: Settings }}
+          link={configLink}
           tone="neutral"
-          activo={pathname === "/configuracion"}
+          activo={pathname === configLink.href}
           onNavigate={onNavigate}
         />
       </div>

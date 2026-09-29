@@ -12,14 +12,7 @@ import {
 } from "@/lib/actions";
 import { getCotizacionUSD } from "@/lib/config";
 import { formatMoneda, formatMonedaCompact, formatFecha } from "@/lib/utils";
-import {
-  Card,
-  SectionTitle,
-  Field,
-  EmptyState,
-  inputCls,
-  btnCls,
-} from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, PageHeader, LoadingState } from "@/components/ui";
 
 const TIPOS_DOLAR = ["MEP", "Blue", "CCL", "Oficial", "Cripto"];
 
@@ -52,6 +45,10 @@ export default function InversionesPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/inversiones"
+        description="Cambio de divisas y compras de dólares con precio promedio."
+      />
       <section>
         <SectionTitle>Cambio de divisas</SectionTitle>
         <p className="mb-3 text-xs text-subtle">
@@ -105,11 +102,11 @@ export default function InversionesPage() {
       <section>
         <SectionTitle>Compras registradas</SectionTitle>
         {inversiones === undefined ? (
-          <p className="text-sm text-subtle">Cargando…</p>
+          <LoadingState />
         ) : compras.length === 0 ? (
           <EmptyState>Todavía no registraste compras de dólares.</EmptyState>
         ) : (
-          <ul className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
             {compras.map((c) => {
               const totalOperacion =
                 c.costo_ars ??
@@ -117,7 +114,7 @@ export default function InversionesPage() {
               return (
                 <li
                   key={c.id}
-                  className="flex flex-wrap items-center gap-x-6 gap-y-2 bg-zinc-900/40 px-4 py-3 text-sm"
+                  className="flex flex-wrap items-center gap-x-6 gap-y-2 bg-surface px-4 py-3 text-sm"
                 >
                   <div className="min-w-32">
                     <p className="font-medium text-zinc-200">
@@ -195,11 +192,11 @@ export default function InversionesPage() {
       {otras.length > 0 && (
         <section>
           <SectionTitle>Otras inversiones</SectionTitle>
-          <ul className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800">
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line">
             {otras.map((i) => (
               <li
                 key={i.id}
-                className="flex items-center justify-between bg-zinc-900/40 px-4 py-3 text-sm"
+                className="flex items-center justify-between bg-surface px-4 py-3 text-sm"
               >
                 <span className="text-zinc-200">
                   {i.nombre}{" "}

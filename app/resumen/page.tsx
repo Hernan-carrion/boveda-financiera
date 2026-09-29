@@ -9,7 +9,7 @@ import {
   getLoanReturnRate,
 } from "@/lib/metrics";
 import { formatMoneda } from "@/lib/utils";
-import { Card, SectionTitle } from "@/components/ui";
+import { Card, SectionTitle, PageHeader, LoadingState } from "@/components/ui";
 import MonthlyBalanceChart from "@/components/charts/MonthlyBalanceChart";
 import CategoryPieChart from "@/components/charts/CategoryPieChart";
 import MetricsCards from "@/components/charts/MetricsCards";
@@ -32,10 +32,14 @@ export default function ResumenPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/resumen"
+        description="Indicadores y distribución del gasto del mes."
+      />
       <section>
         <SectionTitle>Indicadores del mes (ARS)</SectionTitle>
         {cargando ? (
-          <Card className="text-sm text-subtle">Cargando métricas…</Card>
+          <LoadingState rows={2} label="Cargando métricas" />
         ) : (
           <MetricsCards
             ratioGastoIngreso={ratio}

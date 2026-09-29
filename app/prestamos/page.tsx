@@ -13,15 +13,7 @@ import {
 import { registrarPrestamo, registrarDevolucionPrestamo } from "@/lib/actions";
 import { analizarVolatilidad } from "@/lib/fx";
 import { formatMoneda, formatFecha, formatPct } from "@/lib/utils";
-import {
-  Card,
-  SectionTitle,
-  Field,
-  EmptyState,
-  inputCls,
-  btnCls,
-  btnGhostCls,
-} from "@/components/ui";
+import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, btnGhostCls, PageHeader, LoadingState } from "@/components/ui";
 
 export default function PrestamosPage() {
   const prestamos = useLiveQuery(
@@ -36,6 +28,10 @@ export default function PrestamosPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PageHeader
+        href="/prestamos"
+        description="Plata prestada o pedida y sus devoluciones."
+      />
       <section>
         <SectionTitle>Asentar préstamo</SectionTitle>
         <NuevoPrestamoForm cuentas={cuentas ?? []} />
@@ -44,7 +40,7 @@ export default function PrestamosPage() {
       <section>
         <SectionTitle>Abiertos</SectionTitle>
         {prestamos === undefined ? (
-          <p className="text-sm text-subtle">Cargando…</p>
+          <LoadingState />
         ) : abiertos.length === 0 ? (
           <EmptyState>No hay préstamos abiertos.</EmptyState>
         ) : (

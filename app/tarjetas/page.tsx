@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { addMonths } from "date-fns";
-import { CalendarClock, CreditCard, Layers, Plus } from "lucide-react";
-import { bovedaDB, type Moneda } from "@/lib/db";
+import { CalendarClock, CreditCard, Layers, Pencil, Plus } from "lucide-react";
+import { bovedaDB, type CompraTarjeta, type Moneda } from "@/lib/db";
 import { registrarCompraTarjeta, pagarDeudaTarjeta } from "@/lib/actions";
 import { calcularProgresoCompra, montoPorCuota } from "@/lib/cuotas";
 import { formatMoneda, periodoActual, cn } from "@/lib/utils";
 import { ProgressBar } from "@/components/ProgressBar";
+import EditarCompraTarjetaModal from "@/components/EditarCompraTarjetaModal";
 import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, btnGhostCls, PageHeader, LoadingState } from "@/components/ui";
 
 export default function TarjetasPage() {
@@ -18,10 +19,16 @@ export default function TarjetasPage() {
     [],
   );
   const compras = useLiveQuery(
-    () => bovedaDB.compras_tarjeta.orderBy("fecha").reverse().toArray(),
+    () =>
+      bovedaDB.compras_tarjeta
+        .orderBy("fecha")
+        .reverse()
+        .filter((c) => !c.eliminado)
+        .toArray(),
     [],
   );
   const cuentas = useLiveQuery(() => bovedaDB.cuentas.toArray(), []);
+  const [editando, setEditando] = useState<CompraTarjeta | null>(null);
 
   const nombreTarjeta = (id: number) =>
     tarjetas?.find((t) => t.id === id)?.nombre ?? "Tarjeta";
@@ -165,38 +172,45 @@ export default function TarjetasPage() {
               );
               const progreso = calcularProgresoCompra(c, deudasDeLaTarjeta);
               return (
-                <Card key={c.id} className="flex flex-col gap-2">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                    <Layers size={15} className="text-subtle" />
-                    <span className="font-medium text-zinc-200">
-                      {c.descripcion}
-                    </span>
-                    <span className="text-xs text-subtle">
-                      {nombreTarjeta(c.tarjeta_id)}
-                    </span>
-                    <span className="ml-auto tabular-nums text-zinc-300">
-                      {formatMoneda(c.monto_total, c.moneda)} en {c.cuotas_totales}{" "}
-                      {c.cuotas_totales === 1 ? "cuota" : "cuotas"}
-                    </span>
-                  </div>
-                  <ProgressBar pct={progreso.pct} estado="ok" />
-                  <div className="flex flex-wrap items-center justify-between text-xs text-subtle">
-                    <span>
-                      {progreso.finalizada
-                        ? "Todas las cuotas pagadas ✓"
-                        : `Cuota ${progreso.cuotasPagadas + 1} de ${progreso.cuotasTotales}`}
-                    </span>
-                    <span>
-                      {formatMoneda(
-                        montoPorCuota(c.monto_total, c.cuotas_totales),
-                        c.moneda,
-                      )}{" "}
-                      por cuota
-                      {progreso.proximoPeriodo && (
-                        <> · próxima: {progreso.proximoPeriodo}</>
-                      )}
-                    </span>
-                  </div>
+                <Card key={c.id} className="p-0">
+                  <button
+                    type="button"
+                    onClick={() => setEditando(c)}
+                    className="flex w-full flex-col gap-2 p-5 text-left"
+                  >
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                      <Layers size={15} className="shrink-0 text-subtle" />
+                      <span className="flex items-center gap-1.5 font-medium text-zinc-200">
+                        {c.descripcion}
+                        <Pencil size={11} className="text-subtle" />
+                      </span>
+                      <span className="text-xs text-subtle">
+                        {nombreTarjeta(c.tarjeta_id)}
+                      </span>
+                      <span className="ml-auto tabular-nums text-zinc-300">
+                        {formatMoneda(c.monto_total, c.moneda)} en {c.cuotas_totales}{" "}
+                        {c.cuotas_totales === 1 ? "cuota" : "cuotas"}
+                      </span>
+                    </div>
+                    <ProgressBar pct={progreso.pct} estado="ok" />
+                    <div className="flex flex-wrap items-center justify-between text-xs text-subtle">
+                      <span>
+                        {progreso.finalizada
+                          ? "Todas las cuotas pagadas ✓"
+                          : `Cuota ${progreso.cuotasPagadas + 1} de ${progreso.cuotasTotales}`}
+                      </span>
+                      <span>
+                        {formatMoneda(
+                          montoPorCuota(c.monto_total, c.cuotas_totales),
+                          c.moneda,
+                        )}{" "}
+                        por cuota
+                        {progreso.proximoPeriodo && (
+                          <> · próxima: {progreso.proximoPeriodo}</>
+                        )}
+                      </span>
+                    </div>
+                  </button>
                 </Card>
               );
             })}
@@ -224,6 +238,12 @@ export default function TarjetasPage() {
           </div>
         )}
       </section>
+
+      <EditarCompraTarjetaModal
+        compra={editando}
+        tarjetas={tarjetas ?? []}
+        onClose={() => setEditando(null)}
+      />
     </div>
   );
 }

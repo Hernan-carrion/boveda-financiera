@@ -143,8 +143,11 @@ create table if not exists public.compras_tarjeta (
   periodo_inicio text,
   moneda         text,
   fecha          text,
+  eliminado      boolean default false,
   last_updated   text
 );
+
+alter table public.compras_tarjeta add column if not exists eliminado boolean default false;
 
 -- Calendario de la "cuenta sueldo" de referencia (no mueve plata real).
 create table if not exists public.dias_trabajados (

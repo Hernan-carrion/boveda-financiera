@@ -1,5 +1,6 @@
 import {
   bovedaDB,
+  type CompraTarjeta,
   type EstadoDeuda,
   type EstadoTarea,
   type Moneda,
@@ -828,6 +829,113 @@ export async function registrarCompraTarjeta(params: {
       }
 
       return compra_id;
+    },
+  );
+}
+
+/**
+ * Resta de `deudas_tarjetas` las cuotas que una compra ya había repartido —
+ * inverso exacto de las sumas que hace `registrarCompraTarjeta`. Se usa antes
+ * de aplicar un reparto nuevo (al editar) o directamente al eliminar. Si un
+ * período queda en $0 y todavía no se pagó nada, borra esa fila en vez de
+ * dejar un resumen vacío dando vueltas.
+ */
+async function revertirCuotasCompra(compra: CompraTarjeta) {
+  const slices = calcularCuotas(
+    compra.monto_total,
+    compra.cuotas_totales,
+    compra.periodo_inicio,
+  );
+  for (const slice of slices) {
+    const existente = await bovedaDB.deudas_tarjetas
+      .where("tarjeta_id")
+      .equals(compra.tarjeta_id)
+      .and((d) => d.periodo === slice.periodo)
+      .first();
+    if (!existente || existente.id == null) continue;
+
+    const total = Math.max(0, existente.monto_total - slice.monto);
+    if (total === 0 && existente.monto_pagado === 0) {
+      await bovedaDB.deudas_tarjetas.delete(existente.id);
+    } else {
+      await bovedaDB.deudas_tarjetas.update(existente.id, {
+        monto_total: total,
+        estado: estadoDeuda(total, existente.monto_pagado),
+      });
+    }
+  }
+}
+
+export interface CambiosCompraTarjeta {
+  tarjeta_id: number;
+  descripcion: string;
+  monto_total: number;
+  cuotas_totales: number;
+  moneda: Moneda;
+  periodo_inicio: string;
+}
+
+/**
+ * Edita una compra en cuotas ya cargada (ej: monto, tarjeta o cantidad de
+ * cuotas mal puestos al cargarla). Revierte el reparto viejo en
+ * `deudas_tarjetas` y aplica el nuevo desde cero — así no importa qué campo
+ * cambió, el resumen de cada período siempre queda consistente.
+ */
+export async function editarCompraTarjeta(id: number, cambios: CambiosCompraTarjeta) {
+  if (!(cambios.monto_total > 0)) throw new Error("El monto debe ser mayor a 0.");
+  const cuotas_totales = Math.max(1, Math.floor(cambios.cuotas_totales) || 1);
+
+  return bovedaDB.transaction(
+    "rw",
+    bovedaDB.compras_tarjeta,
+    bovedaDB.deudas_tarjetas,
+    async () => {
+      const actual = await bovedaDB.compras_tarjeta.get(id);
+      if (!actual) throw new Error("Compra inexistente.");
+
+      await revertirCuotasCompra(actual);
+
+      await bovedaDB.compras_tarjeta.update(id, {
+        tarjeta_id: cambios.tarjeta_id,
+        descripcion: cambios.descripcion.trim() || "Compra",
+        monto_total: cambios.monto_total,
+        cuotas_totales,
+        periodo_inicio: cambios.periodo_inicio,
+        moneda: cambios.moneda,
+        last_updated: new Date().toISOString(),
+      });
+
+      for (const slice of calcularCuotas(
+        cambios.monto_total,
+        cuotas_totales,
+        cambios.periodo_inicio,
+      )) {
+        await sumarDeudaPeriodo(cambios.tarjeta_id, slice.periodo, slice.monto);
+      }
+    },
+  );
+}
+
+/**
+ * "Borra" una compra en cuotas: revierte lo que había sumado a
+ * `deudas_tarjetas` y la marca con borrado lógico (mismo motivo que
+ * `Transaccion.eliminado` — ver lib/db.ts). No toca pagos ya hechos sobre el
+ * período, sólo lo que esta compra puntual venía aportando.
+ */
+export async function borrarCompraTarjeta(id: number) {
+  return bovedaDB.transaction(
+    "rw",
+    bovedaDB.compras_tarjeta,
+    bovedaDB.deudas_tarjetas,
+    async () => {
+      const actual = await bovedaDB.compras_tarjeta.get(id);
+      if (!actual) return;
+
+      await revertirCuotasCompra(actual);
+      await bovedaDB.compras_tarjeta.update(id, {
+        eliminado: true,
+        last_updated: new Date().toISOString(),
+      });
     },
   );
 }

@@ -90,6 +90,13 @@ export interface CompraTarjeta extends Sincronizable {
   periodo_inicio: string;
   moneda: Moneda;
   fecha: string; // ISO string
+  /**
+   * Borrado lógico (mismo motivo que `Transaccion.eliminado`): editar o
+   * eliminar una compra en cuotas revierte su reparto en `deudas_tarjetas`
+   * (ver `editarCompraTarjeta`/`borrarCompraTarjeta` en lib/actions.ts) — un
+   * borrado físico no sincroniza bien entre dispositivos.
+   */
+  eliminado?: boolean;
 }
 
 export type EstadoInversion = "activa" | "cerrada";
@@ -429,6 +436,16 @@ bovedaDB.version(10).stores({
   habitos: "++id, nombre, activo, eliminado, last_updated",
   habito_registros:
     "++id, habito_id, fecha, &[habito_id+fecha], hecho, last_updated",
+});
+
+/**
+ * v11 — borrado lógico de compras en cuotas (`eliminado`), mismo motivo que
+ * el de transacciones (v6) y suscripciones (v8): poder editar/eliminar una
+ * compra con tarjeta cargada por error sin romper la sincronización.
+ */
+bovedaDB.version(11).stores({
+  compras_tarjeta:
+    "++id, tarjeta_id, periodo_inicio, moneda, fecha, eliminado, last_updated",
 });
 
 /**

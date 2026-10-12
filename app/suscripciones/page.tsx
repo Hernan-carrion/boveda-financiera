@@ -97,6 +97,20 @@ export default function SuscripcionesPage() {
                     />
                     Activa
                   </label>
+                  <label className="flex items-center gap-1.5 text-xs text-zinc-400">
+                    <input
+                      type="checkbox"
+                      checked={s.descuenta_de_tarjeta === true}
+                      onChange={(e) =>
+                        s.id != null &&
+                        bovedaDB.suscripciones.update(s.id, {
+                          descuenta_de_tarjeta: e.target.checked,
+                          last_updated: new Date().toISOString(),
+                        })
+                      }
+                    />
+                    Se descuenta de la tarjeta
+                  </label>
                   <button
                     type="button"
                     onClick={() => setEditando(s)}
@@ -139,6 +153,7 @@ function NuevaSuscripcionForm({
   const [categoria, setCategoria] = useState("Suscripciones");
   const [cuentaId, setCuentaId] = useState<string>("");
   const [diaCobro, setDiaCobro] = useState("1");
+  const [descuentaDeTarjeta, setDescuentaDeTarjeta] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
@@ -165,11 +180,13 @@ function NuevaSuscripcionForm({
       cuenta_id,
       dia_cobro: dia,
       activa: true,
+      ...(descuentaDeTarjeta ? { descuenta_de_tarjeta: true } : {}),
       ultimo_cobro_periodo: yaPasoEsteMes ? periodoActual(hoy) : undefined,
       last_updated: new Date().toISOString(),
     });
     setDescripcion("");
     setMonto("");
+    setDescuentaDeTarjeta(false);
     setMsg("Suscripción creada ✓");
   }
 
@@ -239,6 +256,14 @@ function NuevaSuscripcionForm({
             onChange={(e) => setDiaCobro(e.target.value)}
           />
         </Field>
+        <label className="flex items-center gap-2 text-xs text-zinc-300 sm:col-span-2 lg:col-span-3">
+          <input
+            type="checkbox"
+            checked={descuentaDeTarjeta}
+            onChange={(e) => setDescuentaDeTarjeta(e.target.checked)}
+          />
+          Se descuenta de la tarjeta (me la reintegran al pagar el resumen)
+        </label>
         <div className="flex items-end">
           <button type="submit" className={btnCls}>
             <Plus size={16} />

@@ -157,6 +157,14 @@ export interface Suscripcion extends Sincronizable {
   /** Último período "yyyy-MM" en el que ya se avisó "se cobra en 2 días". */
   ultimo_aviso_periodo?: string;
   /**
+   * La suscripción se debita de una cuenta propia pero en realidad la paga
+   * otra persona (ej: la madre, dueña de las tarjetas), que lo compensa
+   * cobrando menos cuando se le paga el resumen de la tarjeta. No cambia el
+   * cobro automático ni los saldos: sólo alimenta la vista previa "total de
+   * la tarjeta menos lo que me reintegran" de /tarjetas.
+   */
+  descuenta_de_tarjeta?: boolean;
+  /**
    * Borrado lógico (mismo motivo que `Transaccion.eliminado`): un borrado
    * físico no se puede "subir" con upsert y un dispositivo desactualizado
    * podría resucitarla en el próximo sync.

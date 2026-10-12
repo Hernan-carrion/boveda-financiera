@@ -10,7 +10,17 @@ import { calcularProgresoCompra, montoPorCuota } from "@/lib/cuotas";
 import { formatMoneda, periodoActual, cn } from "@/lib/utils";
 import { ProgressBar } from "@/components/ProgressBar";
 import EditarCompraTarjetaModal from "@/components/EditarCompraTarjetaModal";
+import PreviewPagoTarjeta from "@/components/PreviewPagoTarjeta";
+import {
+  descuentoMensualPorMoneda,
+  previewPagoTarjeta,
+  suscripcionesDescontables,
+} from "@/lib/reintegroTarjeta";
 import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, btnGhostCls, PageHeader, LoadingState } from "@/components/ui";
+
+/** Un resumen que quedó en $0 sin pagos (ej: tras editar una compra) no se muestra. */
+const tieneMovimiento = (d: { monto_total: number; monto_pagado: number }) =>
+  d.monto_total > 0.005 || d.monto_pagado > 0;
 
 export default function TarjetasPage() {
   const tarjetas = useLiveQuery(() => bovedaDB.tarjetas.toArray(), []);
@@ -28,7 +38,18 @@ export default function TarjetasPage() {
     [],
   );
   const cuentas = useLiveQuery(() => bovedaDB.cuentas.toArray(), []);
+  const suscripciones = useLiveQuery(
+    () => bovedaDB.suscripciones.filter((s) => !s.eliminado).toArray(),
+    [],
+  );
   const [editando, setEditando] = useState<CompraTarjeta | null>(null);
+
+  const descontables = suscripcionesDescontables(suscripciones ?? []);
+  const filasPreview = previewPagoTarjeta(
+    deudas ?? [],
+    tarjetas ?? [],
+    descuentoMensualPorMoneda(descontables),
+  );
 
   const nombreTarjeta = (id: number) =>
     tarjetas?.find((t) => t.id === id)?.nombre ?? "Tarjeta";
@@ -149,6 +170,19 @@ export default function TarjetasPage() {
       </section>
 
       <section>
+        <SectionTitle>Total a pagar descontando suscripciones</SectionTitle>
+        <p className="mb-3 text-xs text-subtle">
+          Vista previa: el resumen pendiente de cada período menos las
+          suscripciones que te reintegran. No cambia saldos ni resúmenes.
+        </p>
+        {tarjetas === undefined || deudas === undefined || suscripciones === undefined ? (
+          <LoadingState />
+        ) : (
+          <PreviewPagoTarjeta descontables={descontables} filas={filasPreview} />
+        )}
+      </section>
+
+      <section>
         <SectionTitle>Registrar compra</SectionTitle>
         <p className="mb-3 text-xs text-subtle">
           Elegí la cantidad de cuotas y el reparto se calcula solo: cada cuota
@@ -222,11 +256,11 @@ export default function TarjetasPage() {
         <SectionTitle>Resúmenes / deudas</SectionTitle>
         {deudas === undefined ? (
           <LoadingState />
-        ) : deudas.length === 0 ? (
+        ) : deudas.filter(tieneMovimiento).length === 0 ? (
           <EmptyState>Sin deudas registradas.</EmptyState>
         ) : (
           <div className="flex flex-col gap-3">
-            {deudas.map((d) => (
+            {deudas.filter(tieneMovimiento).map((d) => (
               <DeudaRow
                 key={d.id}
                 deuda={d}

@@ -45,6 +45,7 @@ function SuscripcionForm({
   const [cuentaId, setCuentaId] = useState(String(sus.cuenta_id));
   const [diaCobro, setDiaCobro] = useState(String(sus.dia_cobro));
   const [activa, setActiva] = useState(sus.activa);
+  const [descuentaDeTarjeta, setDescuentaDeTarjeta] = useState(sus.descuenta_de_tarjeta === true);
   const [guardando, setGuardando] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -75,6 +76,9 @@ function SuscripcionForm({
         cuenta_id: cid,
         dia_cobro: Math.min(31, Math.max(1, Number(diaCobro) || 1)),
         activa,
+        ...(descuentaDeTarjeta || sus.descuenta_de_tarjeta !== undefined
+          ? { descuenta_de_tarjeta: descuentaDeTarjeta }
+          : {}),
       });
       onClose();
     } catch (err) {
@@ -180,6 +184,24 @@ function SuscripcionForm({
             onChange={(e) => setActiva(e.target.checked)}
           />
           Activa
+        </label>
+      </div>
+
+      <div className="col-span-2">
+        <label className="flex items-start gap-2 text-xs text-zinc-300">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={descuentaDeTarjeta}
+            onChange={(e) => setDescuentaDeTarjeta(e.target.checked)}
+          />
+          <span>
+            Se descuenta de la tarjeta
+            <span className="block text-subtle">
+              Me la reintegran al pagar el resumen: no cambia el cobro, sólo se
+              resta en la vista previa de Tarjetas.
+            </span>
+          </span>
         </label>
       </div>
 

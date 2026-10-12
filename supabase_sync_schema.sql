@@ -117,6 +117,7 @@ create table if not exists public.suscripciones (
 
 alter table public.suscripciones add column if not exists ultimo_aviso_periodo text;
 alter table public.suscripciones add column if not exists eliminado boolean default false;
+alter table public.suscripciones add column if not exists descuenta_de_tarjeta boolean default false;
 
 create table if not exists public.metas_ahorro (
   id             bigint primary key,

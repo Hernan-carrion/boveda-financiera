@@ -329,6 +329,7 @@ export interface CambiosSuscripcion {
   cuenta_id?: number;
   dia_cobro?: number;
   activa?: boolean;
+  descuenta_de_tarjeta?: boolean;
 }
 
 /** Edita cualquier campo de una suscripción ya cargada. */
@@ -836,9 +837,13 @@ export async function registrarCompraTarjeta(params: {
 /**
  * Resta de `deudas_tarjetas` las cuotas que una compra ya había repartido —
  * inverso exacto de las sumas que hace `registrarCompraTarjeta`. Se usa antes
- * de aplicar un reparto nuevo (al editar) o directamente al eliminar. Si un
- * período queda en $0 y todavía no se pagó nada, borra esa fila en vez de
- * dejar un resumen vacío dando vueltas.
+ * de aplicar un reparto nuevo (al editar) o directamente al eliminar.
+ *
+ * Un período que queda en $0 NO se borra: el sync sube con upsert pero no
+ * propaga borrados, así que Supabase conservaría la fila vieja y el próximo
+ * pull la resucitaría con su monto anterior (un resumen fantasma). Se deja
+ * en $0 — la UI lo oculta y `sumarDeudaPeriodo` lo reutiliza si vuelve a
+ * hacer falta.
  */
 async function revertirCuotasCompra(compra: CompraTarjeta) {
   const slices = calcularCuotas(
@@ -854,15 +859,12 @@ async function revertirCuotasCompra(compra: CompraTarjeta) {
       .first();
     if (!existente || existente.id == null) continue;
 
-    const total = Math.max(0, existente.monto_total - slice.monto);
-    if (total === 0 && existente.monto_pagado === 0) {
-      await bovedaDB.deudas_tarjetas.delete(existente.id);
-    } else {
-      await bovedaDB.deudas_tarjetas.update(existente.id, {
-        monto_total: total,
-        estado: estadoDeuda(total, existente.monto_pagado),
-      });
-    }
+    const total = Math.max(0, Math.round((existente.monto_total - slice.monto) * 100) / 100);
+    await bovedaDB.deudas_tarjetas.update(existente.id, {
+      monto_total: total,
+      estado: estadoDeuda(total, existente.monto_pagado),
+      last_updated: new Date().toISOString(),
+    });
   }
 }
 

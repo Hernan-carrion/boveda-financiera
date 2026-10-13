@@ -1,5 +1,6 @@
 import { startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import type { Transaccion, Prestamo, Moneda } from "./db";
+import { montoDevuelto } from "./prestamos";
 import {
   CATEGORIA_CAMBIO_DIVISA,
   CATEGORIAS_NECESIDAD,
@@ -167,18 +168,13 @@ export function getSaludFinanciera(
 /**
  * Tasa de devolución de préstamos:
  * `(monto de préstamos devueltos / monto total de préstamos) * 100`.
- * Se considera "devuelto" el estado "saldado" (o "devuelto", por compatibilidad).
+ * Cuenta lo efectivamente devuelto, incluidas las devoluciones parciales.
  */
 export function getLoanReturnRate(prestamos: Prestamo[]): number {
   const total = prestamos.reduce((sum, p) => sum + (p.monto || 0), 0);
   if (total <= 0) return 0;
 
-  const devueltos = prestamos
-    .filter((p) => {
-      const estado = p.estado as string;
-      return estado === "saldado" || estado === "devuelto";
-    })
-    .reduce((sum, p) => sum + (p.monto || 0), 0);
+  const devueltos = prestamos.reduce((sum, p) => sum + montoDevuelto(p), 0);
 
   return (devueltos / total) * 100;
 }

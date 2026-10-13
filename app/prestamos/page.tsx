@@ -10,7 +10,13 @@ import {
   type Prestamo,
   type TipoPrestamo,
 } from "@/lib/db";
-import { registrarPrestamo, registrarDevolucionPrestamo } from "@/lib/actions";
+import {
+  registrarPrestamo,
+  registrarDevolucionPrestamo,
+  deshacerDevolucionPrestamo,
+} from "@/lib/actions";
+import { montoDevuelto, montoRestante } from "@/lib/prestamos";
+import { ProgressBar } from "@/components/ProgressBar";
 import { analizarVolatilidad } from "@/lib/fx";
 import { formatMoneda, formatFecha, formatPct } from "@/lib/utils";
 import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, btnGhostCls, PageHeader, LoadingState } from "@/components/ui";
@@ -57,7 +63,7 @@ export default function PrestamosPage() {
           <SectionTitle>Devueltos</SectionTitle>
           <div className="flex flex-col gap-3">
             {devueltos.map((p) => (
-              <PrestamoDevueltoRow key={p.id} prestamo={p} />
+              <PrestamoDevueltoRow key={p.id} prestamo={p} cuentas={cuentas ?? []} />
             ))}
           </div>
         </section>
@@ -179,6 +185,8 @@ function NuevoPrestamoForm({ cuentas }: { cuentas: Cuenta[] }) {
   );
 }
 
+const SIN_CUENTA = "sin-cuenta";
+
 function PrestamoRow({
   prestamo,
   cuentas,
@@ -188,31 +196,51 @@ function PrestamoRow({
 }) {
   const [cuentaId, setCuentaId] = useState("");
   const [monto, setMonto] = useState("");
+  const [nota, setNota] = useState("");
   const [cotizacionCierre, setCotizacionCierre] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
   const tieneOrigen = !!prestamo.cotizacion_origen;
+  const devuelto = montoDevuelto(prestamo);
+  const restante = montoRestante(prestamo);
+  // Una cuenta de otra moneda restaría el número crudo: sólo se ofrecen las
+  // de la misma moneda del préstamo (o "sin mover una cuenta").
+  const cuentasElegibles = cuentas.filter((c) => c.moneda === prestamo.moneda);
 
   async function devolver(e: React.FormEvent) {
     e.preventDefault();
-    const cid = Number(cuentaId);
-    const m = Number(monto) || prestamo.monto;
-    if (!cid || m <= 0) {
-      setMsg("Elegí la cuenta.");
+    if (!cuentaId) {
+      setMsg({
+        ok: false,
+        texto: `Elegí ${prestamo.tipo === "otorgado" ? "a qué cuenta ingresa" : "de qué cuenta sale"}, o "Sin mover una cuenta".`,
+      });
+      return;
+    }
+    const m = Number(monto) || restante;
+    if (m <= 0) {
+      setMsg({ ok: false, texto: "Poné un monto mayor a 0." });
       return;
     }
     const cot = Number(cotizacionCierre);
     if (tieneOrigen && !(cot > 0)) {
-      setMsg("Ingresá la cotización del dólar al momento de la devolución.");
+      setMsg({ ok: false, texto: "Ingresá la cotización del dólar al momento de la devolución." });
       return;
     }
     if (prestamo.id == null) return;
-    await registrarDevolucionPrestamo(
-      prestamo.id,
-      cid,
-      m,
-      cot > 0 ? cot : undefined,
-    );
-    setMsg("Devolución registrada ✓");
+    try {
+      await registrarDevolucionPrestamo(
+        prestamo.id,
+        cuentaId === SIN_CUENTA ? null : Number(cuentaId),
+        m,
+        cot > 0 ? cot : undefined,
+        nota,
+      );
+      setMonto("");
+      setNota("");
+      setCotizacionCierre("");
+      setMsg({ ok: true, texto: "Devolución registrada ✓" });
+    } catch (err) {
+      setMsg({ ok: false, texto: err instanceof Error ? err.message : "No se pudo registrar." });
+    }
   }
 
   return (
@@ -230,16 +258,34 @@ function PrestamoRow({
             dólar @ ${prestamo.cotizacion_origen}
           </span>
         )}
-        <span className="ml-auto tabular-nums font-semibold text-zinc-100">
-          {formatMoneda(prestamo.monto, prestamo.moneda)}
+        <span className="ml-auto text-right tabular-nums">
+          <span className="font-semibold text-zinc-100">
+            {devuelto > 0 ? "Resta " : ""}
+            {formatMoneda(restante, prestamo.moneda)}
+          </span>
+          {devuelto > 0 && (
+            <span className="block text-xs text-subtle">
+              de {formatMoneda(prestamo.monto, prestamo.moneda)}
+            </span>
+          )}
         </span>
       </div>
 
+      {devuelto > 0 && (
+        <ProgressBar
+          pct={(devuelto / prestamo.monto) * 100}
+          estado="ok"
+          className="mt-3"
+        />
+      )}
+      <HistorialDevoluciones prestamo={prestamo} cuentas={cuentas} />
+
       <form
         onSubmit={devolver}
-        className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
+        className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
       >
         <select
+          aria-label={prestamo.tipo === "otorgado" ? "Cuenta donde ingresa" : "Cuenta de donde sale"}
           className={inputCls}
           value={cuentaId}
           onChange={(e) => setCuentaId(e.target.value)}
@@ -247,7 +293,8 @@ function PrestamoRow({
           <option value="">
             {prestamo.tipo === "otorgado" ? "Ingresa a…" : "Sale de…"}
           </option>
-          {cuentas.map((c) => (
+          <option value={SIN_CUENTA}>Sin mover una cuenta (ej: compra en tarjeta)</option>
+          {cuentasElegibles.map((c) => (
             <option key={c.id} value={c.id}>
               {c.nombre} ({c.moneda})
             </option>
@@ -256,15 +303,25 @@ function PrestamoRow({
         <input
           type="number"
           min={0}
+          step="0.01"
+          aria-label="Monto a devolver"
           className={inputCls}
           value={monto}
           onChange={(e) => setMonto(e.target.value)}
-          placeholder={`Total ${prestamo.monto}`}
+          placeholder={`Monto (resta ${restante})`}
+        />
+        <input
+          aria-label="Nota"
+          className={inputCls}
+          value={nota}
+          onChange={(e) => setNota(e.target.value)}
+          placeholder="Nota (opcional)"
         />
         <input
           type="number"
           min={0}
           step="0.01"
+          aria-label="Cotización del dólar hoy"
           className={inputCls}
           value={cotizacionCierre}
           onChange={(e) => setCotizacionCierre(e.target.value)}
@@ -276,12 +333,75 @@ function PrestamoRow({
           Registrar devolución
         </button>
       </form>
-      {msg && <p className="mt-2 text-xs text-zinc-400">{msg}</p>}
+      {msg && (
+        <p className={`mt-2 text-xs ${msg.ok ? "text-zinc-400" : "text-red-400"}`}>
+          {msg.texto}
+        </p>
+      )}
     </Card>
   );
 }
 
-function PrestamoDevueltoRow({ prestamo }: { prestamo: Prestamo }) {
+/** Historial de devoluciones de un préstamo, con "Deshacer" por si se cargó mal. */
+function HistorialDevoluciones({
+  prestamo,
+  cuentas,
+}: {
+  prestamo: Prestamo;
+  cuentas: Cuenta[];
+}) {
+  const devoluciones = prestamo.devoluciones ?? [];
+  if (devoluciones.length === 0) return null;
+
+  async function deshacer(indice: number) {
+    if (prestamo.id == null) return;
+    const d = devoluciones[indice];
+    if (
+      !window.confirm(
+        `¿Deshacer la devolución de ${formatMoneda(d.monto, prestamo.moneda)}? ${d.transaccion_id != null ? "También se revierte el movimiento y el saldo de la cuenta." : ""}`,
+      )
+    ) {
+      return;
+    }
+    await deshacerDevolucionPrestamo(prestamo.id, indice);
+  }
+
+  return (
+    <ul className="mt-3 flex flex-col divide-y divide-line rounded-xl border border-line">
+      {devoluciones.map((d, i) => {
+        const cuenta = cuentas.find((c) => c.id === d.cuenta_id)?.nombre;
+        return (
+          <li key={`${d.fecha}-${i}`} className="flex items-center gap-3 px-3 py-1.5 text-xs">
+            <span className="text-subtle">{formatFecha(d.fecha)}</span>
+            <span className="font-medium tabular-nums text-zinc-200">
+              {formatMoneda(d.monto, prestamo.moneda)}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-subtle">
+              {[d.nota, cuenta ?? (d.cuenta_id == null ? "sin mover cuenta" : null)]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+            <button
+              type="button"
+              onClick={() => deshacer(i)}
+              className="min-h-9 shrink-0 rounded-lg px-2 text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
+            >
+              Deshacer
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function PrestamoDevueltoRow({
+  prestamo,
+  cuentas,
+}: {
+  prestamo: Prestamo;
+  cuentas: Cuenta[];
+}) {
   const vol = analizarVolatilidad(prestamo);
 
   return (
@@ -301,6 +421,8 @@ function PrestamoDevueltoRow({ prestamo }: { prestamo: Prestamo }) {
         </span>
         <span className="text-emerald-400">devuelto</span>
       </div>
+
+      <HistorialDevoluciones prestamo={prestamo} cuentas={cuentas} />
 
       {vol ? (
         <div

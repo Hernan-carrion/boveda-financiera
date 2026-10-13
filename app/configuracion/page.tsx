@@ -365,7 +365,10 @@ function CloudSyncSection() {
   async function run(kind: "push" | "pull") {
     setBusy(kind);
     setRes(null);
-    const r = kind === "push" ? await pushToCloud() : await pullFromCloud();
+    // La descarga manual reemplaza lo local por lo de la nube; la subida sólo
+    // sube lo que es más nuevo que la nube (nunca pisa datos más nuevos).
+    const r =
+      kind === "push" ? await pushToCloud() : await pullFromCloud({ forzar: true });
     setRes({
       ok: r.ok,
       text: r.detail ? `${r.message} — ${r.detail}` : r.message,
@@ -397,9 +400,10 @@ function CloudSyncSection() {
           </p>
         )}
         <p className="text-sm text-zinc-400">
-          Subí la base local a la nube o traé la versión de la nube a este
-          dispositivo. Usa <strong>upsert por id</strong>, así podés mantener la
-          compu y el celu sincronizados.
+          <strong>Subir</strong> manda a la nube lo que cambiaste acá y es más
+          nuevo que lo que ya tiene (nunca pisa datos más nuevos de otro
+          dispositivo). <strong>Descargar</strong> reemplaza lo de este
+          dispositivo por la versión de la nube.
         </p>
         <div className="flex flex-wrap gap-2">
           <button

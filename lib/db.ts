@@ -1,4 +1,4 @@
-import Dexie, { type EntityTable } from "dexie";
+import Dexie, { type EntityTable, type Transaction } from "dexie";
 
 /**
  * Base de datos local (IndexedDB) de Bóveda Financiera.
@@ -141,8 +141,8 @@ export interface Prestamo extends Sincronizable {
   moneda: Moneda;
   estado: EstadoPrestamo;
   fecha_prestamo: string; // ISO string
-  /** Cotización del dólar (ARS/USD) al dar/recibir el préstamo. */
-  cotizacion_origen?: number;
+  /** Cotización del dólar (ARS/USD) al dar/recibir el préstamo (null si se borró al editar). */
+  cotizacion_origen?: number | null;
   /** Cotización del dólar (ARS/USD) de la última devolución, al saldarlo. */
   cotizacion_cierre?: number | null;
   /** Cuándo se saldó por completo (null si se reabrió al deshacer una devolución). */
@@ -488,13 +488,29 @@ export const CLAVE_MONTO_SUELDO = "monto_sueldo";
 export const CLAVE_TARIFA_MEDIO_TURNO = "tarifa_medio_turno";
 export const CLAVE_TARIFA_TURNO_COMPLETO = "tarifa_turno_completo";
 
+/**
+ * Las filas iniciales llevan un timestamp "de época" a propósito: son valores
+ * por defecto, no datos del usuario, así que en la sincronización tienen que
+ * perder siempre contra lo que ya haya en la nube. Con la hora de hoy, un
+ * dispositivo nuevo (ej: la PWA reinstalada) creería que sus cuentas en $0 son
+ * más nuevas y pisaría las cuentas reales de la nube.
+ */
+const SELLO_INICIAL = "1970-01-01T00:00:00.000Z";
+
 bovedaDB.on("populate", () => {
+  // Ids fijos (1, 2, 3): las cuentas por defecto tienen que ser LAS MISMAS en
+  // todos los dispositivos, o al sincronizar quedarían duplicadas.
   bovedaDB.cuentas.bulkAdd([
-    { nombre: "Efectivo Pesos", tipo: "efectivo", moneda: "ARS", saldo: 0 },
-    { nombre: "Mercado Pago", tipo: "digital", moneda: "ARS", saldo: 0 },
-    { nombre: "Efectivo Dólares", tipo: "efectivo", moneda: "USD", saldo: 0 },
+    { id: 1, nombre: "Efectivo Pesos", tipo: "efectivo", moneda: "ARS", saldo: 0, last_updated: SELLO_INICIAL },
+    { id: 2, nombre: "Mercado Pago", tipo: "digital", moneda: "ARS", saldo: 0, last_updated: SELLO_INICIAL },
+    { id: 3, nombre: "Efectivo Dólares", tipo: "efectivo", moneda: "USD", saldo: 0, last_updated: SELLO_INICIAL },
   ]);
-  bovedaDB.configuracion.add({ clave: CLAVE_COTIZACION_USD, valor: "1000" });
+  bovedaDB.configuracion.add({
+    id: 1,
+    clave: CLAVE_COTIZACION_USD,
+    valor: "1000",
+    last_updated: SELLO_INICIAL,
+  });
 });
 
 /* ============================================================================
@@ -521,17 +537,62 @@ function avisarEscrituraLocal() {
   for (const fn of listenersEscrituraLocal) fn();
 }
 
+let ultimoIdGenerado = 0;
+
+/**
+ * Id para una fila nueva: milisegundos × 1000 + un número al azar (~1,7×10¹⁵,
+ * dentro del rango entero seguro de JavaScript y del bigint de Supabase).
+ *
+ * Con ids autoincrementales (1, 2, 3…) dos dispositivos que cargaban un
+ * movimiento antes de sincronizarse generaban el MISMO id, y uno pisaba al
+ * otro en la nube sin avisar. Con este id eso deja de pasar. Las filas
+ * existentes conservan su id.
+ */
+function generarId(): number {
+  const base = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+  ultimoIdGenerado = base > ultimoIdGenerado ? base : ultimoIdGenerado + 1;
+  return ultimoIdGenerado;
+}
+
+type TransaccionMarcable = Transaction & { __remota?: boolean };
+
+/**
+ * Marca la transacción de Dexie en curso como "escritura remota": lo que el
+ * sync baja de la nube. Esas escrituras conservan el `last_updated` que traen
+ * (no se sellan con la hora de hoy) y no disparan el auto-push. Hay que
+ * llamarla DENTRO de un `bovedaDB.transaction(...)`.
+ */
+export function marcarTransaccionRemota() {
+  const tx = Dexie.currentTransaction as TransaccionMarcable | null;
+  if (tx) tx.__remota = true;
+}
+
+const esRemota = (tx: Transaction) => (tx as TransaccionMarcable).__remota === true;
+
 // Se engancha una sola vez, a todas las tablas existentes, vía los hooks
 // nativos de Dexie (creating/updating/deleting). `transaction.on("complete")`
 // asegura que el aviso salga recién cuando el cambio ya quedó confirmado.
+//
+// Además cada escritura LOCAL sella `last_updated` sola: el sync compara fila
+// por fila con ese timestamp para no pisar datos más nuevos de otro
+// dispositivo. Antes sólo lo ponían algunas acciones — un cambio de saldo, por
+// ejemplo, no cambiaba el timestamp y era indistinguible de una fila vieja.
 for (const tabla of bovedaDB.tables) {
-  tabla.hook("creating", (_key, _obj, transaction) => {
+  tabla.hook("creating", (primKey, obj, transaction) => {
+    if (esRemota(transaction)) return;
+    const fila = obj as { last_updated?: string };
+    if (!fila.last_updated) fila.last_updated = new Date().toISOString();
     transaction.on("complete", avisarEscrituraLocal);
+    // Id único entre dispositivos para las filas nuevas (ver generarId).
+    if (primKey === undefined) return generarId();
   });
-  tabla.hook("updating", (_mods, _key, _obj, transaction) => {
+  tabla.hook("updating", (mods, _key, _obj, transaction) => {
+    if (esRemota(transaction)) return;
     transaction.on("complete", avisarEscrituraLocal);
+    if (!("last_updated" in mods)) return { last_updated: new Date().toISOString() };
   });
   tabla.hook("deleting", (_key, _obj, transaction) => {
+    if (esRemota(transaction)) return;
     transaction.on("complete", avisarEscrituraLocal);
   });
 }

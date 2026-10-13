@@ -1121,6 +1121,68 @@ export async function registrarDevolucionPrestamo(
   );
 }
 
+export interface CambiosPrestamo {
+  persona: string;
+  monto: number;
+  /** Cotización del dólar al prestar; null/0 la borra. */
+  cotizacion_origen: number | null;
+  fecha_prestamo: string;
+}
+
+/**
+ * Edita un préstamo ya cargado (persona, monto, cotización, fecha). Cambiar el
+ * `monto` sólo cambia lo que se debe: NO toca movimientos ni saldos de
+ * cuentas (para corregir lo que realmente entró o salió de una cuenta se
+ * edita el movimiento). El monto no puede quedar por debajo de lo ya devuelto,
+ * y el estado (abierto/devuelto) se recalcula con el monto nuevo — por eso
+ * subir el monto de un préstamo saldado lo reabre.
+ */
+export async function actualizarPrestamo(id: number, cambios: CambiosPrestamo) {
+  const persona = cambios.persona.trim();
+  if (!persona) throw new Error("Poné el nombre de la persona.");
+  if (!(cambios.monto > 0)) throw new Error("El monto debe ser mayor a 0.");
+
+  return bovedaDB.transaction("rw", bovedaDB.prestamos, async () => {
+    const prestamo = await bovedaDB.prestamos.get(id);
+    if (!prestamo) throw new Error("Préstamo inexistente.");
+
+    // Un préstamo devuelto de antes de los pagos parciales no tiene historial:
+    // se lo materializa para no perder cuánto se había devuelto.
+    let devoluciones = prestamo.devoluciones;
+    if (!devoluciones?.length && (prestamo.estado as string) !== "abierto") {
+      devoluciones = [
+        {
+          fecha: prestamo.fecha_devolucion ?? prestamo.fecha_prestamo,
+          monto: prestamo.monto,
+          ...(prestamo.cotizacion_cierre ? { cotizacion: prestamo.cotizacion_cierre } : {}),
+          nota: "Devolución anterior a los pagos parciales",
+        },
+      ];
+    }
+
+    const devuelto = Math.round((devoluciones ?? []).reduce((s, d) => s + d.monto, 0) * 100) / 100;
+    if (cambios.monto < devuelto - 0.005) {
+      throw new Error(
+        `El monto no puede ser menor a lo ya devuelto (${formatMoneda(devuelto, prestamo.moneda)}).`,
+      );
+    }
+
+    const saldado = cambios.monto - devuelto < 0.005;
+    const ultima = devoluciones?.[devoluciones.length - 1];
+    await bovedaDB.prestamos.update(id, {
+      persona,
+      monto: cambios.monto,
+      cotizacion_origen: cambios.cotizacion_origen && cambios.cotizacion_origen > 0 ? cambios.cotizacion_origen : null,
+      fecha_prestamo: cambios.fecha_prestamo,
+      ...(devoluciones ? { devoluciones } : {}),
+      estado: saldado ? "devuelto" : "abierto",
+      fecha_devolucion: saldado ? (ultima?.fecha ?? prestamo.fecha_devolucion ?? new Date().toISOString()) : null,
+      cotizacion_cierre: saldado ? (ultima?.cotizacion ?? prestamo.cotizacion_cierre ?? null) : null,
+      last_updated: new Date().toISOString(),
+    });
+  });
+}
+
 /**
  * Deshace una devolución (por si se cargó mal): revierte el movimiento y el
  * saldo de la cuenta si lo hubo, la saca del historial y, si el préstamo

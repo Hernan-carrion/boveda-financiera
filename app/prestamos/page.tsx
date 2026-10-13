@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { HandCoins, TrendingUp, TrendingDown } from "lucide-react";
+import { HandCoins, Pencil, TrendingUp, TrendingDown } from "lucide-react";
 import {
   bovedaDB,
   type Cuenta,
@@ -17,6 +17,7 @@ import {
 } from "@/lib/actions";
 import { montoDevuelto, montoRestante } from "@/lib/prestamos";
 import { ProgressBar } from "@/components/ProgressBar";
+import EditarPrestamoModal from "@/components/EditarPrestamoModal";
 import { analizarVolatilidad } from "@/lib/fx";
 import { formatMoneda, formatFecha, formatPct } from "@/lib/utils";
 import { Card, SectionTitle, Field, EmptyState, inputCls, btnCls, btnGhostCls, PageHeader, LoadingState } from "@/components/ui";
@@ -27,6 +28,7 @@ export default function PrestamosPage() {
     [],
   );
   const cuentas = useLiveQuery(() => bovedaDB.cuentas.toArray(), []);
+  const [editando, setEditando] = useState<Prestamo | null>(null);
 
   const abiertos = (prestamos ?? []).filter((p) => p.estado === "abierto");
   // "!== abierto" cubre "devuelto" y filas viejas migradas desde "saldado"
@@ -52,7 +54,12 @@ export default function PrestamosPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {abiertos.map((p) => (
-              <PrestamoRow key={p.id} prestamo={p} cuentas={cuentas ?? []} />
+              <PrestamoRow
+                key={p.id}
+                prestamo={p}
+                cuentas={cuentas ?? []}
+                onEditar={() => setEditando(p)}
+              />
             ))}
           </div>
         )}
@@ -63,11 +70,18 @@ export default function PrestamosPage() {
           <SectionTitle>Devueltos</SectionTitle>
           <div className="flex flex-col gap-3">
             {devueltos.map((p) => (
-              <PrestamoDevueltoRow key={p.id} prestamo={p} cuentas={cuentas ?? []} />
+              <PrestamoDevueltoRow
+                key={p.id}
+                prestamo={p}
+                cuentas={cuentas ?? []}
+                onEditar={() => setEditando(p)}
+              />
             ))}
           </div>
         </section>
       )}
+
+      <EditarPrestamoModal prestamo={editando} onClose={() => setEditando(null)} />
     </div>
   );
 }
@@ -190,9 +204,11 @@ const SIN_CUENTA = "sin-cuenta";
 function PrestamoRow({
   prestamo,
   cuentas,
+  onEditar,
 }: {
   prestamo: Prestamo;
   cuentas: Cuenta[];
+  onEditar: () => void;
 }) {
   const [cuentaId, setCuentaId] = useState("");
   const [monto, setMonto] = useState("");
@@ -247,6 +263,14 @@ function PrestamoRow({
     <Card>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span className="font-medium text-zinc-200">{prestamo.persona}</span>
+        <button
+          type="button"
+          onClick={onEditar}
+          aria-label={`Editar préstamo de ${prestamo.persona}`}
+          className="-m-1.5 grid size-11 place-items-center rounded-lg text-subtle transition-colors hover:bg-white/5 hover:text-zinc-100"
+        >
+          <Pencil size={14} aria-hidden />
+        </button>
         <span className="text-subtle">
           {prestamo.tipo === "otorgado" ? "le presté" : "me prestó"}
         </span>
@@ -398,9 +422,11 @@ function HistorialDevoluciones({
 function PrestamoDevueltoRow({
   prestamo,
   cuentas,
+  onEditar,
 }: {
   prestamo: Prestamo;
   cuentas: Cuenta[];
+  onEditar: () => void;
 }) {
   const vol = analizarVolatilidad(prestamo);
 
@@ -408,6 +434,14 @@ function PrestamoDevueltoRow({
     <Card className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span className="font-medium text-zinc-300">{prestamo.persona}</span>
+        <button
+          type="button"
+          onClick={onEditar}
+          aria-label={`Editar préstamo de ${prestamo.persona}`}
+          className="-m-1.5 grid size-11 place-items-center rounded-lg text-subtle transition-colors hover:bg-white/5 hover:text-zinc-100"
+        >
+          <Pencil size={14} aria-hidden />
+        </button>
         <span className="text-subtle">
           {prestamo.tipo === "otorgado" ? "le presté" : "me prestó"}
         </span>

@@ -1,6 +1,7 @@
 import {
   bovedaDB,
   type CompraTarjeta,
+  type DevolucionPrestamo,
   type EstadoDeuda,
   type EstadoTarea,
   type Moneda,
@@ -17,7 +18,8 @@ import {
   CATEGORIA_TRABAJO_INDEPENDIENTE,
   type ResultadoGasto,
 } from "./categorizer";
-import { periodoActual } from "./utils";
+import { formatMoneda, periodoActual } from "./utils";
+import { montoRestante } from "./prestamos";
 import { calcularCuotas } from "./cuotas";
 import { getTarifasTurno } from "./config";
 import { avanzarSiVencida, diasHasta } from "./recordatorios";
@@ -1030,13 +1032,27 @@ export async function registrarPrestamo(params: {
   );
 }
 
+/**
+ * Registra una devolución de un préstamo, total o PARCIAL. `monto` está en la
+ * moneda del préstamo y no puede superar lo que falta devolver. El préstamo
+ * sigue "abierto" hasta que lo devuelto cubre el monto original.
+ *
+ * `cuenta_id = null` registra la devolución sin mover ninguna cuenta (ej: se
+ * pagó con una compra en tarjeta, o con un movimiento que ya cargaste a mano).
+ * Si hay cuenta, tiene que ser de la misma moneda que el préstamo: antes se
+ * restaba el número crudo aunque la cuenta fuera en otra moneda (US$2.000
+ * descontados como $2.000 de una cuenta en pesos).
+ */
 export async function registrarDevolucionPrestamo(
   prestamo_id: number,
-  cuenta_id: number,
+  cuenta_id: number | null,
   monto: number,
   /** Cotización del dólar (ARS/USD) al momento de la devolución. Opcional. */
   cotizacion_cierre?: number,
+  nota?: string,
 ) {
+  if (!(monto > 0)) throw new Error("El monto debe ser mayor a 0.");
+
   return bovedaDB.transaction(
     "rw",
     bovedaDB.prestamos,
@@ -1044,33 +1060,95 @@ export async function registrarDevolucionPrestamo(
     bovedaDB.transacciones,
     async () => {
       const prestamo = await bovedaDB.prestamos.get(prestamo_id);
-      const cuenta = await bovedaDB.cuentas.get(cuenta_id);
       if (!prestamo || prestamo.id == null) throw new Error("Préstamo inexistente.");
-      if (!cuenta || cuenta.id == null) throw new Error("Cuenta inexistente.");
 
-      // si yo lo otorgué, la devolución ENTRA; si lo recibí, la devolución SALE
-      const delta = prestamo.tipo === "otorgado" ? monto : -monto;
-      await bovedaDB.cuentas.update(cuenta.id, { saldo: cuenta.saldo + delta });
+      const restante = montoRestante(prestamo);
+      if (monto > restante + 0.005) {
+        throw new Error(
+          `Solo resta devolver ${formatMoneda(restante, prestamo.moneda)}.`,
+        );
+      }
 
-      await bovedaDB.transacciones.add({
-        cuenta_id: cuenta.id,
-        tipo: prestamo.tipo === "otorgado" ? "devolucion" : "egreso",
+      const ahora = new Date().toISOString();
+      let transaccion_id: number | undefined;
+
+      if (cuenta_id != null) {
+        const cuenta = await bovedaDB.cuentas.get(cuenta_id);
+        if (!cuenta || cuenta.id == null) throw new Error("Cuenta inexistente.");
+        if (cuenta.moneda !== prestamo.moneda) {
+          throw new Error(
+            `"${cuenta.nombre}" es una cuenta en ${cuenta.moneda} y el préstamo es en ${prestamo.moneda}. Elegí una cuenta en ${prestamo.moneda} o "Sin mover una cuenta".`,
+          );
+        }
+
+        // si yo lo otorgué, la devolución ENTRA; si lo recibí, la devolución SALE
+        const delta = prestamo.tipo === "otorgado" ? monto : -monto;
+        await bovedaDB.cuentas.update(cuenta.id, { saldo: cuenta.saldo + delta });
+
+        transaccion_id = await bovedaDB.transacciones.add({
+          cuenta_id: cuenta.id,
+          tipo: prestamo.tipo === "otorgado" ? "devolucion" : "egreso",
+          monto,
+          moneda: prestamo.moneda,
+          categoria: "Préstamos",
+          descripcion:
+            prestamo.tipo === "otorgado"
+              ? `${prestamo.persona} devolvió el préstamo`
+              : `Devolución a ${prestamo.persona}`,
+          fecha: ahora,
+        });
+      }
+
+      const cot = cotizacion_cierre && cotizacion_cierre > 0 ? cotizacion_cierre : undefined;
+      const devolucion: DevolucionPrestamo = {
+        fecha: ahora,
         monto,
-        moneda: prestamo.moneda,
-        categoria: "Préstamos",
-        descripcion:
-          prestamo.tipo === "otorgado"
-            ? `${prestamo.persona} devolvió el préstamo`
-            : `Devolución a ${prestamo.persona}`,
-        fecha: new Date().toISOString(),
+        ...(cuenta_id != null ? { cuenta_id } : {}),
+        ...(transaccion_id != null ? { transaccion_id } : {}),
+        ...(cot ? { cotizacion: cot } : {}),
+        ...(nota?.trim() ? { nota: nota.trim() } : {}),
+      };
+
+      const saldado = restante - monto < 0.005;
+      await bovedaDB.prestamos.update(prestamo.id, {
+        devoluciones: [...(prestamo.devoluciones ?? []), devolucion],
+        estado: saldado ? "devuelto" : "abierto",
+        fecha_devolucion: saldado ? ahora : null,
+        cotizacion_cierre: saldado ? (cot ?? null) : null,
+        last_updated: ahora,
       });
+    },
+  );
+}
+
+/**
+ * Deshace una devolución (por si se cargó mal): revierte el movimiento y el
+ * saldo de la cuenta si lo hubo, la saca del historial y, si el préstamo
+ * estaba saldado, lo reabre.
+ */
+export async function deshacerDevolucionPrestamo(prestamo_id: number, indice: number) {
+  return bovedaDB.transaction(
+    "rw",
+    bovedaDB.prestamos,
+    bovedaDB.cuentas,
+    bovedaDB.transacciones,
+    async () => {
+      const prestamo = await bovedaDB.prestamos.get(prestamo_id);
+      const devolucion = prestamo?.devoluciones?.[indice];
+      if (!prestamo || prestamo.id == null || !devolucion) {
+        throw new Error("Devolución inexistente.");
+      }
+
+      if (devolucion.transaccion_id != null) {
+        await borrarTransaccion(devolucion.transaccion_id);
+      }
 
       await bovedaDB.prestamos.update(prestamo.id, {
-        estado: "devuelto",
-        fecha_devolucion: new Date().toISOString(),
-        ...(cotizacion_cierre && cotizacion_cierre > 0
-          ? { cotizacion_cierre }
-          : {}),
+        devoluciones: (prestamo.devoluciones ?? []).filter((_, i) => i !== indice),
+        estado: "abierto",
+        fecha_devolucion: null,
+        cotizacion_cierre: null,
+        last_updated: new Date().toISOString(),
       });
     },
   );

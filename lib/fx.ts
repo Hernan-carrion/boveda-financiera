@@ -23,10 +23,20 @@ export interface Volatilidad {
 
 export function analizarVolatilidad(p: Prestamo): Volatilidad | null {
   const origen = p.cotizacion_origen;
-  const cierre = p.cotizacion_cierre;
-  if (!origen || !cierre || origen <= 0 || cierre <= 0) return null;
+  if (!origen || origen <= 0) return null;
 
-  const diferenciaBruta = p.monto * cierre - p.monto * origen;
+  // Con devoluciones parciales cada pago tiene su propia cotización: se
+  // calcula pago por pago y `cierre` es el promedio ponderado por monto.
+  const pagos = (p.devoluciones ?? []).filter((d) => d.cotizacion && d.cotizacion > 0);
+  let cierre = p.cotizacion_cierre ?? 0;
+  let montoBase = p.monto;
+  if (pagos.length > 0) {
+    montoBase = pagos.reduce((suma, d) => suma + d.monto, 0);
+    cierre = pagos.reduce((suma, d) => suma + d.monto * (d.cotizacion as number), 0) / montoBase;
+  }
+  if (!cierre || cierre <= 0) return null;
+
+  const diferenciaBruta = montoBase * cierre - montoBase * origen;
   const impacto = p.tipo === "otorgado" ? -diferenciaBruta : diferenciaBruta;
   const variacionPct = ((cierre - origen) / origen) * 100;
 

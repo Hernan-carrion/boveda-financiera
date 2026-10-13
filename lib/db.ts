@@ -118,19 +118,40 @@ export interface Inversion extends Sincronizable {
 export type TipoPrestamo = "otorgado" | "recibido";
 export type EstadoPrestamo = "abierto" | "devuelto";
 
+/** Una devolución (total o parcial) de un préstamo. */
+export interface DevolucionPrestamo {
+  fecha: string; // ISO string
+  /** En la moneda del préstamo. */
+  monto: number;
+  /** Cuenta que movió plata; ausente si se pagó "en especie" (ej: una compra en tarjeta). */
+  cuenta_id?: number;
+  /** Movimiento que generó en `transacciones` (para poder deshacerla). */
+  transaccion_id?: number;
+  /** Cotización del dólar (ARS/USD) ese día. */
+  cotizacion?: number;
+  nota?: string;
+}
+
 export interface Prestamo extends Sincronizable {
   id?: number;
   persona: string;
   tipo: TipoPrestamo;
+  /** Monto ORIGINAL del préstamo; lo que falta devolver sale de restarle `devoluciones`. */
   monto: number;
   moneda: Moneda;
   estado: EstadoPrestamo;
   fecha_prestamo: string; // ISO string
   /** Cotización del dólar (ARS/USD) al dar/recibir el préstamo. */
   cotizacion_origen?: number;
-  /** Cotización del dólar (ARS/USD) al registrar la devolución. */
-  cotizacion_cierre?: number;
-  fecha_devolucion?: string; // ISO string
+  /** Cotización del dólar (ARS/USD) de la última devolución, al saldarlo. */
+  cotizacion_cierre?: number | null;
+  /** Cuándo se saldó por completo (null si se reabrió al deshacer una devolución). */
+  fecha_devolucion?: string | null; // ISO string
+  /**
+   * Devoluciones parciales. Los préstamos anteriores a esta función no la
+   * tienen: si están "devueltos" cuentan como devueltos completos.
+   */
+  devoluciones?: DevolucionPrestamo[];
 }
 
 /** Límite de gasto mensual por categoría. */

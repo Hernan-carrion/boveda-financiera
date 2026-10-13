@@ -87,8 +87,11 @@ create table if not exists public.prestamos (
   cotizacion_origen double precision,
   cotizacion_cierre double precision,
   fecha_devolucion  text,
+  devoluciones      jsonb,
   last_updated      text
 );
+
+alter table public.prestamos add column if not exists devoluciones jsonb;
 
 -- ----- Módulos PRO -----
 

@@ -443,6 +443,9 @@ function CloudSyncSection() {
             {res.text}
           </p>
         )}
+        <p className="text-[11px] text-slate-500">
+          Versión de la app: {process.env.NEXT_PUBLIC_BUILD_ID || "desarrollo"}
+        </p>
       </Card>
     </section>
   );

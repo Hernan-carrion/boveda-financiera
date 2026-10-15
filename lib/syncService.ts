@@ -1,6 +1,6 @@
 import type { Table } from "dexie";
 import { bovedaDB, marcarTransaccionRemota, onEscrituraLocal } from "./db";
-import { supabase } from "./supabase";
+import { supabase as supabaseReal } from "./supabase";
 import {
   esMasNueva,
   filasAPullear,
@@ -48,6 +48,14 @@ const TABLAS = [
 ] as const;
 
 export type TablaSync = (typeof TABLAS)[number];
+
+// Cliente de la nube. Es un `let` sólo para que los tests puedan reemplazarlo
+// por una nube falsa (ver lib/syncService.test.ts); en la app nunca cambia.
+let supabase = supabaseReal;
+
+export function __usarSupabaseDePrueba(cliente: unknown): void {
+  supabase = cliente as typeof supabaseReal;
+}
 
 export interface SyncResult {
   ok: boolean;

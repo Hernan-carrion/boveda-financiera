@@ -1,5 +1,7 @@
 /* Bóveda Financiera — Service Worker
- * Estrategia: Stale-While-Revalidate para same-origin GET.
+ * Estrategia: red primero para las navegaciones (el HTML decide qué JS se
+ * carga: si sale del caché, el dispositivo queda con código viejo y puede
+ * pisar datos del sync) y Stale-While-Revalidate para el resto de same-origin GET.
  * La app es 100% local, así que esto sólo cachea el shell (HTML/CSS/JS/íconos).
  *
  * __BUILD_ID__ lo reemplaza scripts/stamp-sw.js con un valor único en cada
@@ -85,6 +87,28 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === "basic") {
+            const copia = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(request, copia));
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cache = await caches.open(CACHE);
+          return (
+            (await cache.match(request)) ||
+            (await cache.match(START_URL)) ||
+            Response.error()
+          );
+        })
+    );
+    return;
+  }
 
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {

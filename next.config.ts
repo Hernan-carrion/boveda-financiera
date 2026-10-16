@@ -12,6 +12,8 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 const nextConfig: NextConfig = {
   output: "export",
+  // Identifica el build en Configuración, para saber qué versión corre cada dispositivo.
+  env: { NEXT_PUBLIC_BUILD_ID: Date.now().toString(36) },
   images: {
     unoptimized: true,
   },
